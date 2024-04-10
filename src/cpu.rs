@@ -33,11 +33,15 @@ impl CPU {
           }
 
           if self.register_a & 0b1000_0000 != 0 {
-            self.status = self.status | 0b1000_0000
+            self.status = self.status | 0b1000_0000;
           } else {
             self.status = self.status & 0b0111_1111;
           }
+        },
+        0x00 => {
+          return;
         }
+        _ => todo!()
       }
     }
   }
