@@ -70,7 +70,7 @@ impl CPU {
   }
 
   fn mem_read(&self, addr: u16) -> u8 {
-    self.memory[addr as usize];
+    self.memory[addr as usize]
   }
 
   fn mem_write(&mut self, addr: u16, data: u8) {
@@ -89,12 +89,12 @@ impl CPU {
 
   pub fn run(&mut self) {
     loop {
-      let opscode = program[self.program_counter as usize];
+      let opscode = self.mem_read(self.program_counter);
       self.program_counter += 1;
 
       match opscode {
         0xA9 => {
-          let param = program[self.program_counter as usize];
+          let param = self.mem_read(self.program_counter);
           self.program_counter += 1;
           self.register_a = param;
 
