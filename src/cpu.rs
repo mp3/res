@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use crate::opcodes;
+
 pub struct CPU {
   pub register_a: u8,
   pub register_x: u8,
@@ -22,62 +25,10 @@ pub enum AddressingMode {
   NoneAddressing,
 }
 
-impl CPU {
-  pub fn new() -> Self {
-    CPU {
-      register_a: 0,
-      register_x: 0,
-      register_y: 0,
-      status: 0,
-      program_counter: 0,
-      memory: [0; 0xffff],
-    }
-  }
+trait Mem {
+  fn mem_read(&self, addr: u16) -> u8;
 
-  fn lda(&mut self, mode: &AddressingMode) {
-    let addr = self.get_operand_address(mode);
-    let value = self.mem_read(addr);
-
-    self.register_a = value;
-    self.update_zero_and_nagative_flags(self.register_a);
-  }
-
-  fn tax(&mut self) {
-    self.register_x = self.register_a;
-    self.update_zero_and_nagative_flags(self.register_x);
-  }
-
-  fn inx(&mut self) {
-    self.register_x = self.register_x.wrapping_add(1);
-    self.update_zero_and_nagative_flags(self.register_x);
-  }
-
-  fn sta(&mut self, mode: &AddressingMode) {
-    let addr = self.get_operand_address(mode);
-    self.mem_write(addr, self.register_a);
-  }
-
-  fn update_zero_and_nagative_flags(&mut self, result: u8) {
-    if result == 0 {
-      self.status = self.status | 0b0000_0010;
-    } else {
-      self.status = self.status & 0b1111_1101;
-    }
-
-    if result & 0b1000_0000 != 0 {
-      self.status = self.status | 0b1000_0000;
-    } else {
-      self.status = self.status & 0b0111_1111;
-    }
-  }
-
-  fn mem_read(&self, addr: u16) -> u8 {
-    self.memory[addr as usize]
-  }
-
-  fn mem_write(&mut self, addr: u16, data: u8) {
-    self.memory[addr as usize] = data;
-  }
+  fn mem_write(&mut self, addr: u16, data: u8);
 
   fn mem_read_u16(&mut self, pos: u16) -> u16 {
     let lo = self.mem_read(pos) as u16;
@@ -91,57 +42,27 @@ impl CPU {
     self.mem_write(pos, lo);
     self.mem_write(pos + 1, hi);
   }
+}
 
-  pub fn reset(&mut self) {
-    self.register_a = 0;
-    self.register_x = 0;
-    self.status = 0;
-
-    self.program_counter = self.mem_read_u16(0xFFFC);
+impl Mem for CPU {
+  fn mem_read(&self, addr: u16) -> u8 {
+    self.memory[addr as usize]
   }
 
-  pub fn load_and_run(&mut self, program: Vec<u8>) {
-    self.load(program);
-    self.reset();
-    self.run();
+  fn mem_write(&mut self, addr: u16, data: u8) {
+    self.memory[addr as usize] = data;
   }
+}
 
-  pub fn load(&mut self, program: Vec<u8>) {
-    self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
-    self.mem_write_u16(0xFFFC, 0x8000);
-  }
-
-  pub fn run(&mut self) {
-    loop {
-      let code = self.mem_read(self.program_counter);
-      self.program_counter += 1;
-
-      match code {
-        0xA9 => {
-          self.lda(&AddressingMode::Immediate);
-          self.program_counter += 1;
-        },
-        0xA5 => {
-          self.lda(&AddressingMode::ZeroPage);
-          self.program_counter += 1;
-        }
-        0xAD => {
-          self.lda(&AddressingMode::Absolute);
-          self.program_counter += 2;
-        }
-        0xAA => self.tax(),
-        0xE8 => self.inx(),
-        0x85 => {
-          self.sta(&AddressingMode::ZeroPage);
-          self.program_counter += 1;
-        }
-        0x95 => {
-          self.sta(&AddressingMode::ZeroPage_X);
-          self.program_counter += 1;
-        }
-        0x00 => return,
-        _ => todo!()
-      }
+impl CPU {
+  pub fn new() -> Self {
+    CPU {
+      register_a: 0,
+      register_x: 0,
+      register_y: 0,
+      status: 0,
+      program_counter: 0,
+      memory: [0; 0xffff],
     }
   }
 
@@ -192,6 +113,96 @@ impl CPU {
       }
     }
   }
+
+  fn lda(&mut self, mode: &AddressingMode) {
+    let addr = self.get_operand_address(mode);
+    let value = self.mem_read(addr);
+
+    self.register_a = value;
+    self.update_zero_and_nagative_flags(self.register_a);
+  }
+
+  fn tax(&mut self) {
+    self.register_x = self.register_a;
+    self.update_zero_and_nagative_flags(self.register_x);
+  }
+
+  fn inx(&mut self) {
+    self.register_x = self.register_x.wrapping_add(1);
+    self.update_zero_and_nagative_flags(self.register_x);
+  }
+
+  fn sta(&mut self, mode: &AddressingMode) {
+    let addr = self.get_operand_address(mode);
+    self.mem_write(addr, self.register_a);
+  }
+
+  fn update_zero_and_nagative_flags(&mut self, result: u8) {
+    if result == 0 {
+      self.status = self.status | 0b0000_0010;
+    } else {
+      self.status = self.status & 0b1111_1101;
+    }
+
+    if result & 0b1000_0000 != 0 {
+      self.status = self.status | 0b1000_0000;
+    } else {
+      self.status = self.status & 0b0111_1111;
+    }
+  }
+  
+  pub fn load(&mut self, program: Vec<u8>) {
+    self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
+    self.mem_write_u16(0xFFFC, 0x8000);
+  }
+
+  pub fn run(&mut self) {
+    let ref opcodes: HashMap<u8, &'static opcodes::Opcode> = *opcodes::OPCODES_MAP;
+
+    loop {
+      let code = self.mem_read(self.program_counter);
+      self.program_counter += 1;
+      let program_counter_state = self.program_counter;
+
+      let opcode = opcodes.get(&code).expect(&format!("Opcode {:x} is not recognized", code));
+
+      match code {
+        0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
+          self.lda(&opcode.mode);
+        }
+
+        0x85 | 0x95 | 0x8d | 0x9d | 0x99 | 0x81 | 0x91 => {
+          self.sta(&opcode.mode);
+        }
+
+        0xAA => self.tax(),
+        0xE8 => self.inx(),
+        0x00 => return,
+        _ => todo!(),
+      }
+
+      if program_counter_state == self.program_counter {
+        self.program_counter += (opcode.len - 1) as u16;
+      }
+    }
+  }
+
+  pub fn reset(&mut self) {
+    self.register_a = 0;
+    self.register_x = 0;
+    self.register_y = 0;
+    self.status = 0;
+
+    self.program_counter = self.mem_read_u16(0xFFFC);
+  }
+
+  pub fn load_and_run(&mut self, program: Vec<u8>) {
+    self.load(program);
+    self.reset();
+    self.run();
+  }
+
+
 }
 
 #[cfg(test)]
