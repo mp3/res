@@ -14,12 +14,16 @@ bitflags! {
   }
 }
 
+const STACK: u16 = 0x0100;
+const STACK_RESET: u8 = 0xfd;
+
 pub struct CPU {
   pub register_a: u8,
   pub register_x: u8,
   pub register_y: u8,
   pub status: CpuFlags,
   pub program_counter: u16,
+  pub stack_pointer: u8,
   memory: [u8; 0xffff],
 }
 
@@ -75,6 +79,7 @@ impl CPU {
       register_y: 0,
       status: CpuFlags::from_bits_truncate(0b100100),
       program_counter: 0,
+      stack_pointer: STACK_RESET,
       memory: [0; 0xffff],
     }
   }
@@ -208,6 +213,18 @@ impl CPU {
       self.status.remove(CpuFlags::NEGATIV);
     }
   }
+
+  fn stack_push(&mut self, data: u8) {
+    self.mem_write((STACK as u16) + self.stack_pointer as u16, data);
+    self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+  }
+
+  fn php(&mut self) {
+    let mut flags = self.status.clone();
+    flags.insert(CpuFlags::BREAK);
+    flags.insert(CpuFlags::BREAK2);
+    self.stack_push(flags.bits());
+  }
   
   pub fn load(&mut self, program: Vec<u8>) {
     self.memory[0x8000 .. (0x8000 + program.len())].copy_from_slice(&program[..]);
@@ -236,6 +253,9 @@ impl CPU {
         0xAA => self.tax(),
         0xE8 => self.inx(),
         0x00 => return,
+        0x08 => {
+          self.php();
+        },
         0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
           self.adc(&opcode.mode);
         },
@@ -255,6 +275,7 @@ impl CPU {
     self.register_a = 0;
     self.register_x = 0;
     self.register_y = 0;
+    self.stack_pointer = STACK_RESET;
     self.status = CpuFlags::from_bits_truncate(0b100100);
 
     self.program_counter = self.mem_read_u16(0xFFFC);
