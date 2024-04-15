@@ -219,6 +219,17 @@ impl CPU {
     self.stack_pointer = self.stack_pointer.wrapping_sub(1);
   }
 
+  fn stack_pop(&mut self) -> u8 {
+    self.stack_pointer = self.stack_pointer.wrapping_add(1);
+    self.mem_read((STACK as u16) + self.stack_pointer as u16)
+  }
+
+  fn plp(&mut self) {
+    self.status.bits = self.stack_pop();
+    self.status.remove(CpuFlags::BREAK);
+    self.status.insert(CpuFlags::BREAK2);
+  }
+
   fn php(&mut self) {
     let mut flags = self.status.clone();
     flags.insert(CpuFlags::BREAK);
@@ -255,6 +266,9 @@ impl CPU {
         0x00 => return,
         0x08 => {
           self.php();
+        },
+        0x28 => {
+          self.plp();
         },
         0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
           self.adc(&opcode.mode);
