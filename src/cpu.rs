@@ -370,4 +370,235 @@ mod test {
     cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
     assert_eq!(cpu.register_a, 0x55);
   }
+
+  #[test]
+  fn test_sta() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0x55;
+    cpu.load_and_run(vec![0xa9, 0x55, 0x85, 0x10, 0x00]);
+    assert_eq!(cpu.mem_read(0x10), 0x55);
+  }
+
+  #[test]
+  fn test_sta_zero_page_x() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0x55;
+    cpu.register_x = 0x05;
+    cpu.load_and_run(vec![0xa9, 0x55, 0x95, 0x05, 0x00]);
+    assert_eq!(cpu.mem_read(0x05), 0x55);
+  }
+
+  #[test]
+  fn test_sta_absolute() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0x55;
+    cpu.load_and_run(vec![0xa9, 0x55, 0x8d, 0x00, 0x80, 0x00]);
+    assert_eq!(cpu.mem_read(0x8000), 0x55);
+  }
+
+  #[test]
+  fn test_sta_absolute_x() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0x55;
+    cpu.register_x = 0x01;
+    cpu.load_and_run(vec![0xa9, 0x55, 0x9d, 0x00, 0x80, 0x00]);
+    assert_eq!(cpu.mem_read(0x8001), 0x55);
+  }
+
+  #[test]
+  fn test_sta_absolute_y() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0x55;
+    cpu.register_y = 0x01;
+    cpu.load_and_run(vec![0xa9, 0x55, 0x99, 0x00, 0x80, 0x00]);
+    assert_eq!(cpu.mem_read(0x8001), 0x55);
+  }
+
+  #[test]
+  fn test_stack_push_and_pop() {
+    let mut cpu = CPU::new();
+    cpu.stack_push(0x55);
+    assert_eq!(cpu.stack_pop(), 0x55);
+  }
+
+  #[test]
+  fn test_stack_push_and_pop_u16() {
+    let mut cpu = CPU::new();
+    cpu.stack_push(0x55);
+    cpu.stack_push(0x66);
+    assert_eq!(cpu.stack_pop_u16(), 0x5566);
+  }
+
+  #[test]
+  fn test_mem_read() {
+    let mut cpu = CPU::new();
+    cpu.memory[0x10] = 0x55;
+    assert_eq!(cpu.mem_read(0x10), 0x55);
+  }
+
+  #[test]
+  fn test_mem_write() {
+    let mut cpu = CPU::new();
+    cpu.mem_write(0x10, 0x55);
+    assert_eq!(cpu.memory[0x10], 0x55);
+  }
+
+  #[test]
+  fn test_mem_read_u16() {
+    let mut cpu = CPU::new();
+    cpu.memory[0x10] = 0x55;
+    cpu.memory[0x11] = 0x66;
+    assert_eq!(cpu.mem_read_u16(0x10), 0x6655);
+  }
+
+  #[test]
+  fn test_mem_write_u16() {
+    let mut cpu = CPU::new();
+    cpu.mem_write_u16(0x10, 0x6655);
+    assert_eq!(cpu.memory[0x10], 0x55);
+    assert_eq!(cpu.memory[0x11], 0x66);
+  }
+
+  // #[test]
+  // fn test_sta_indirect_x() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x55;
+  //   cpu.register_x = 0x01;
+  //   cpu.mem_write(0x01, 0x05);
+  //   cpu.mem_write(0x06, 0x80);
+  //   cpu.load_and_run(vec![0xa9, 0x55, 0x81, 0x00, 0x00]);
+  //   assert_eq!(cpu.mem_read(0x8005), 0x55);
+  // }
+
+  // #[test]
+  // fn test_sta_indirect_y() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x55;
+  //   cpu.register_y = 0x01;
+  //   cpu.mem_write(0x01, 0x05);
+  //   cpu.mem_write(0x06, 0x80);
+  //   cpu.load_and_run(vec![0xa9, 0x55, 0x91, 0x00, 0x00]);
+  //   assert_eq!(cpu.mem_read(0x8006), 0x55);
+  // }
+
+  // #[test]
+  // fn test_adc() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x55;
+  //   cpu.load_and_run(vec![0xa9, 0x01, 0x69, 0x01, 0x00]);
+  //   assert_eq!(cpu.register_a, 0x56);
+  // }
+
+  // #[test]
+  // fn test_adc_overflow() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x7f;
+  //   cpu.load_and_run(vec![0xa9, 0x01, 0x69, 0x01, 0x00]);
+  //   assert_eq!(cpu.register_a, 0x80);
+  //   assert!(cpu.status.bits() & 0b0100_0000 == 0b0100_0000);
+  // }
+
+  // #[test]
+  // fn test_sbc() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x55;
+  //   cpu.load_and_run(vec![0xa9, 0x01, 0xe9, 0x01, 0x00]);
+  //   assert_eq!(cpu.register_a, 0x54);
+  // }
+
+  // #[test]
+  // fn test_sbc_overflow() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x80;
+  //   cpu.load_and_run(vec![0xa9, 0x01, 0xe9, 0x01, 0x00]);
+  //   assert_eq!(cpu.register_a, 0x7f);
+  //   assert!(cpu.status.bits() & 0b0100_0000 == 0);
+  // }
+
+  // #[test]
+  // fn test_php() {
+  //   let mut cpu = CPU::new();
+  //   cpu.status.bits = 0b1100_0000;
+  //   cpu.php();
+  //   assert_eq!(cpu.stack_pop(), 0b1100_0010);
+  // }
+
+  // #[test]
+  // fn test_plp() {
+  //   let mut cpu = CPU::new();
+  //   cpu.stack_push(0b1100_0010);
+  //   cpu.plp();
+  //   assert_eq!(cpu.status.bits, 0b1100_0000);
+  // }
+
+  // #[test]
+  // fn test_reset() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_a = 0x55;
+  //   cpu.register_x = 0x55;
+  //   cpu.register_y = 0x55;
+  //   cpu.status.bits = 0x55;
+  //   cpu.stack_pointer = 0x55;
+  //   cpu.program_counter = 0x55;
+  //   cpu.reset();
+  //   assert_eq!(cpu.register_a, 0);
+  //   assert_eq!(cpu.register_x, 0);
+  //   assert_eq!(cpu.register_y, 0);
+  //   assert_eq!(cpu.status.bits, 0b100100);
+  //   assert_eq!(cpu.stack_pointer, STACK_RESET);
+  //   assert_eq!(cpu.program_counter, 0x8000);
+  // }
+
+  // #[test]
+  // fn test_run() {
+  //   let mut cpu = CPU::new();
+  //   cpu.load(vec![0xa9, 0x01, 0x00]);
+  //   cpu.run();
+  //   assert_eq!(cpu.register_a, 0x01);
+  // }
+
+  // #[test]
+  // fn test_load_and_run() {
+  //   let mut cpu = CPU::new();
+  //   cpu.load_and_run(vec![0xa9, 0x01, 0x00]);
+  //   assert_eq!(cpu.register_a, 0x01);
+  // }
+
+  // #[test]
+  // fn test_get_operand_address() {
+  //   let mut cpu = CPU::new();
+  //   cpu.register_x = 0x01;
+  //   cpu.mem_write(0x01, 0x05);
+  //   cpu.mem_write(0x06, 0x80);
+  //   assert_eq!(cpu.get_operand_address(&AddressingMode::Indirect_X), 0x8005);
+  // }
+
+  // #[test]
+  // fn test_update_zero_and_nagative_flags() {
+  //   let mut cpu = CPU::new();
+  //   cpu.update_zero_and_nagative_flags(0);
+  //   assert_eq!(cpu.status.bits, 0b0000_0010);
+  //   cpu.update_zero_and_nagative_flags(0x80);
+  //   assert_eq!(cpu.status.bits, 0b1000_0000);
+  // }
+
+  // #[test]
+  // fn test_add_to_refister_a() {
+  //   let mut cpu = CPU::new();
+  //   cpu.add_to_refister_a(0x01);
+  //   assert_eq!(cpu.register_a, 0x01);
+  //   cpu.add_to_refister_a(0xff);
+  //   assert_eq!(cpu.register_a, 0x00);
+  //   assert_eq!(cpu.status.bits, 0b0000_0011);
+  // }
+
+  // #[test]
+  // fn test_set_register_a() {
+  //   let mut cpu = CPU::new();
+  //   cpu.set_register_a(0x01);
+  //   assert_eq!(cpu.register_a, 0x01);
+  //   assert_eq!(cpu.status.bits, 0b0000_0000);
+  //   cpu.set_register_a(0x00);
+  //   assert_eq!(cpu.status.bits, 0b0000_0010);
+  // }
 }
