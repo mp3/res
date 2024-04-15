@@ -224,6 +224,13 @@ impl CPU {
     self.mem_read((STACK as u16) + self.stack_pointer as u16)
   }
 
+  fn stack_pop_u16(&mut self) -> u16 {
+    let lo = self.stack_pop() as u16;
+    let hi = self.stack_pop() as u16;
+
+    hi << 8 | lo
+  }
+
   fn plp(&mut self) {
     self.status.bits = self.stack_pop();
     self.status.remove(CpuFlags::BREAK);
@@ -269,6 +276,13 @@ impl CPU {
         },
         0x28 => {
           self.plp();
+        },
+        0x40 => {
+          self.status.bits = self.stack_pop();
+          self.status.remove(CpuFlags::BREAK);
+          self.status.insert(CpuFlags::BREAK2);
+          
+          self.program_counter = self.stack_pop_u16();
         },
         0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
           self.adc(&opcode.mode);
