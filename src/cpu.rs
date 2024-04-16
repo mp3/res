@@ -250,7 +250,7 @@ impl CPU {
   }
 
   pub fn run(&mut self) {
-    let ref opcodes: HashMap<u8, &'static opcodes::Opcode> = *opcodes::OPCODES_MAP;
+    let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
     loop {
       let code = self.mem_read(self.program_counter);
