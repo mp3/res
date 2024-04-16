@@ -61,6 +61,9 @@ lazy_static! {
     OpCode::new(0x99, "STA", 3, 5, AddressingMode::Absolute_Y),
     OpCode::new(0x81, "STA", 2, 6, AddressingMode::Indirect_X),
     OpCode::new(0x91, "STA", 2, 6, AddressingMode::Indirect_Y),
+
+    OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
+    OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
   ];
 
   pub static ref OPCODES_MAP: HashMap<u8, &'static OpCode> = {
