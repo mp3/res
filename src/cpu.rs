@@ -137,17 +137,17 @@ impl CPU {
     let value = self.mem_read(addr);
 
     self.register_a = value;
-    self.update_zero_and_nagative_flags(self.register_a);
+    self.update_zero_and_negative_flags(self.register_a);
   }
 
   fn tax(&mut self) {
     self.register_x = self.register_a;
-    self.update_zero_and_nagative_flags(self.register_x);
+    self.update_zero_and_negative_flags(self.register_x);
   }
 
   fn inx(&mut self) {
     self.register_x = self.register_x.wrapping_add(1);
-    self.update_zero_and_nagative_flags(self.register_x);
+    self.update_zero_and_negative_flags(self.register_x);
   }
 
   fn sta(&mut self, mode: &AddressingMode) {
@@ -185,9 +185,42 @@ impl CPU {
     self.add_to_refister_a(value);
   }
 
+  fn asl_accumulator(&mut self) {
+    let mut data = self.register_a;
+    if data >> 7 == 1 {
+      self.set_carry_flag();
+    } else {
+      self.clear_carry_flag();
+    }
+    data = data << 1;
+    self.set_register_a(data)
+  }
+
+  fn asl(&mut self, mode: &AddressingMode) -> u8 {
+    let addr = self.get_operand_address(mode);
+    let mut data = self.mem_read(addr);
+    if data >> 7 == 1 {
+      self.set_carry_flag();
+    } else {
+      self.clear_carry_flag();
+    }
+    data = data << 1;
+    self.mem_write(addr, data);
+    self.update_zero_and_negative_flags(data);
+    data
+  }
+
+  fn set_carry_flag(&mut self) {
+    self.status.insert(CpuFlags::CARRY)
+  }
+
+  fn clear_carry_flag(&mut self) {
+    self.status.remove(CpuFlags::CARRY)
+  }
+
   fn set_register_a(&mut self, value: u8) {
     self.register_a = value;
-    self.update_zero_and_nagative_flags(self.register_a);
+    self.update_zero_and_negative_flags(self.register_a);
   }
 
   fn add_to_refister_a(&mut self, data: u8) {
@@ -218,7 +251,7 @@ impl CPU {
     self.set_register_a(result);
   }
 
-  fn update_zero_and_nagative_flags(&mut self, result: u8) {
+  fn update_zero_and_negative_flags(&mut self, result: u8) {
     if result == 0 {
       self.status.insert(CpuFlags::ZERO);
     } else {
@@ -286,6 +319,9 @@ impl CPU {
           self.sta(&opcode.mode);
         }
 
+        0x18 => self.clear_carry_flag(),
+        0x38 => self.set_carry_flag(),
+
         0xAA => self.tax(),
         0xE8 => self.inx(),
         0x00 => return,
@@ -319,6 +355,10 @@ impl CPU {
         },
         0x09 | 0x05 | 0x15 | 0x0d | 0x1d | 0x19 | 0x01 | 0x11 => {
           self.ora(&opcode.mode);
+        },
+        0x0a => self.asl_accumulator(),
+        0x06 | 0x16 | 0x0e | 0x1e => {
+          self.asl(&opcode.mode);
         },
         _ => todo!(),
       }
@@ -505,13 +545,33 @@ mod test {
     assert_eq!(cpu.register_a, 0b1111_1111);
   }
 
-  // write ora function test
   #[test]
   fn test_ora_immediate() {
     let mut cpu = CPU::new();
     cpu.register_a = 0b1100_0000;
     cpu.load_and_run(vec![0xa9, 0b1010_1010, 0x09, 0b0101_0101, 0x00]);
     assert_eq!(cpu.register_a, 0b1111_1111);
+  }
+
+  #[test]
+  fn test_asl_accumulator() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0b1000_0000;
+    cpu.load_and_run(vec![0x0a, 0x00]);
+    assert_eq!(cpu.register_a, 0b0000_0000);
+    assert!(cpu.status.bits() & 0b0000_0010 == 0b10);
+    assert!(cpu.status.bits() & 0b0000_0001 == 0b00);
+  }
+
+  // write asl function test
+  #[test]
+  fn test_asl_zero_page() {
+    let mut cpu = CPU::new();
+    cpu.mem_write(0x10, 0b1000_0001);
+    cpu.load_and_run(vec![0x06, 0x10, 0x00]);
+    assert_eq!(cpu.mem_read(0x10), 0b0000_0010);
+    assert!(!cpu.status.contains(CpuFlags::ZERO));
+    assert!(cpu.status.contains(CpuFlags::CARRY));
   }
 
   // #[test]
@@ -629,11 +689,11 @@ mod test {
   // }
 
   // #[test]
-  // fn test_update_zero_and_nagative_flags() {
+  // fn test_update_zero_and_negative_flags() {
   //   let mut cpu = CPU::new();
-  //   cpu.update_zero_and_nagative_flags(0);
+  //   cpu.update_zero_and_negative_flags(0);
   //   assert_eq!(cpu.status.bits, 0b0000_0010);
-  //   cpu.update_zero_and_nagative_flags(0x80);
+  //   cpu.update_zero_and_negative_flags(0x80);
   //   assert_eq!(cpu.status.bits, 0b1000_0000);
   // }
 
