@@ -277,6 +277,9 @@ impl CPU {
         0x28 => {
           self.plp();
         },
+        0xea => {
+          // do nothing
+        },
         0x40 => {
           self.status.bits = self.stack_pop();
           self.status.remove(CpuFlags::BREAK);
