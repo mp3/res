@@ -161,6 +161,12 @@ impl CPU {
     self.set_register_a(data & self.register_a);
   }
 
+  fn eor(&mut self, mode: &AddressingMode) {
+    let addr = self.get_operand_address(mode);
+    let data = self.mem_read(addr);
+    self.set_register_a(data ^ self.register_a);
+  }
+
   fn sbc(&mut self, mode: &AddressingMode) {
     let addr = self.get_operand_address(mode);
     let data = self.mem_read(addr);
@@ -301,6 +307,9 @@ impl CPU {
         },
         0x29 | 0x25 | 0x35 | 0x2d | 0x3d | 0x39 | 0x21 | 0x31 => {
           self.and(&opcode.mode);
+        },
+        0x49 | 0x45 | 0x55 | 0x4d | 0x5d | 0x59 | 0x41 | 0x51 => {
+          self.eor(&opcode.mode);
         },
         _ => todo!(),
       }
@@ -477,6 +486,14 @@ mod test {
     cpu.register_a = 0b1100_0000;
     cpu.load_and_run(vec![0xa9, 0b1010_1010, 0x29, 0b0101_0101, 0x00]);
     assert_eq!(cpu.register_a, 0b0000_0000);
+  }
+
+  #[test]
+  fn test_eor_immediate() {
+    let mut cpu = CPU::new();
+    cpu.register_a = 0b1100_0000;
+    cpu.load_and_run(vec![0xa9, 0b1010_1010, 0x49, 0b0101_0101, 0x00]);
+    assert_eq!(cpu.register_a, 0b1111_1111);
   }
 
   // #[test]
