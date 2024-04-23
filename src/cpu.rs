@@ -325,6 +325,25 @@ impl CPU {
       data
     }
 
+    fn dec(&mut self, mode: &AddressingMode) -> u8 {
+      let addr = self.get_operand_address(mode);
+      let mut data = self.mem_read(addr);
+      data = data.wrapping_sub(1);
+      self.mem_write(addr, data);
+      self.update_zero_and_negative_flags(data);
+      data
+    }
+
+    fn dex(&mut self) {
+      self.register_x = self.register_x.wrapping_sub(1);
+      self.update_zero_and_negative_flags(self.register_x);
+    }
+
+    fn dey(&mut self) {
+      self.register_y = self.register_y.wrapping_sub(1);
+      self.update_zero_and_negative_flags(self.register_y);
+    }
+
     fn set_carry_flag(&mut self) {
         self.status.insert(CpuFlags::CARRY)
     }
@@ -493,6 +512,15 @@ impl CPU {
                   self.inc(&opcode.mode);
                 }
                 0xc8 => self.iny(),
+                0xc6 | 0xd6 | 0xce | 0xde => {
+                    self.dec(&opcode.mode);
+                }
+                0xca => {
+                    self.dex();
+                }
+                0x88 => {
+                    self.dey();
+                }
                 _ => todo!(),
             }
 
@@ -759,5 +787,13 @@ mod test {
         assert!(cpu.status.contains(CpuFlags::CARRY));
         assert!(!cpu.status.contains(CpuFlags::ZERO));
         assert!(cpu.status.contains(CpuFlags::NEGATIV));
+    }
+
+    #[test]
+    fn test_dec() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+        cpu.load_and_run(vec![0xc6, 0x10, 0x00]);
+        assert_eq!(cpu.mem_read(0x10), 0x54);
     }
 }
