@@ -185,8 +185,13 @@ lazy_static! {
     OpCode::new(0x94, "STY", 2, 4, AddressingMode::ZeroPage_X),
     OpCode::new(0x8c, "STY", 3, 4, AddressingMode::Absolute),
 
+    OpCode::new(0xD8, "CLD", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0x58, "CLI", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0xb8, "CLV", 1, 2, AddressingMode::NoneAddressing),
     OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAddressing),
     OpCode::new(0x38, "SEC", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0x78, "SEI", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0xf8, "SED", 1, 2, AddressingMode::NoneAddressing),
 
     OpCode::new(0xaa, "TAX", 1, 2, AddressingMode::NoneAddressing),
 

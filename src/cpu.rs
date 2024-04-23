@@ -514,8 +514,13 @@ impl CPU {
                     self.sta(&opcode.mode);
                 }
 
+                0xd8 => self.status.remove(CpuFlags::DECIMAL_MODE),
+                0x58 => self.status.remove(CpuFlags::INTERRUPT_DISABLE),
+                0xb8 => self.status.remove(CpuFlags::OVERFLOW),
                 0x18 => self.clear_carry_flag(),
                 0x38 => self.set_carry_flag(),
+                0x78 => self.status.insert(CpuFlags::INTERRUPT_DISABLE),
+                0xf8 => self.status.insert(CpuFlags::DECIMAL_MODE),
 
                 0xAA => self.tax(),
                 0xE8 => self.inx(),
