@@ -140,6 +140,20 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_a);
     }
 
+    fn ldx(&mut self, mode: &AddressingMode) {
+      let addr = self.get_operand_address(mode);
+      let data = self.mem_read(addr);
+      self.register_x = data;
+      self.update_zero_and_negative_flags(self.register_x);
+    }
+
+    fn ldy(&mut self, mode: &AddressingMode) {
+      let addr = self.get_operand_address(mode);
+      let data = self.mem_read(addr);
+      self.register_y = data;
+      self.update_zero_and_negative_flags(self.register_y);
+    }
+
     fn tax(&mut self) {
         self.register_x = self.register_a;
         self.update_zero_and_negative_flags(self.register_x);
@@ -625,6 +639,12 @@ impl CPU {
                 0x24 | 0x2c => {
                     self.bit(&opcode.mode);
                 }
+                0xa2 | 0xa6 | 0xb6 | 0xae | 0xbe => {
+                    self.ldx(&opcode.mode);
+                }
+                0xa0 | 0xa4 | 0xb4 | 0xac | 0xbc => {
+                    self.ldy(&opcode.mode);
+                }
                 _ => todo!(),
             }
 
@@ -702,6 +722,24 @@ mod test {
 
         cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
         assert_eq!(cpu.register_a, 0x55);
+    }
+
+    #[test]
+    fn test_ldx() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa2, 0x10, 0xa6, 0x10, 0x00]);
+        assert_eq!(cpu.register_x, 0x55);
+    }
+
+    #[test]
+    fn test_ldy() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa0, 0x10, 0xa4, 0x10, 0x00]);
+        assert_eq!(cpu.register_y, 0x55);
     }
 
     #[test]
