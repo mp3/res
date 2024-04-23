@@ -25,7 +25,6 @@ lazy_static! {
   pub static ref CPU_OPS_CODES: Vec<OpCode> = vec![
     OpCode::new(0x00, "BRK", 1, 7, AddressingMode::NoneAddressing),
     OpCode::new(0x00, "NOP", 1, 2, AddressingMode::NoneAddressing),
-    OpCode::new(0xaa, "TAX", 1, 2, AddressingMode::NoneAddressing),
 
     OpCode::new(0x69, "ADC", 2, 2, AddressingMode::Immediate),
     OpCode::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
@@ -186,11 +185,13 @@ lazy_static! {
     OpCode::new(0x94, "STY", 2, 4, AddressingMode::ZeroPage_X),
     OpCode::new(0x8c, "STY", 3, 4, AddressingMode::Absolute),
 
-    OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
-    OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
-
     OpCode::new(0x18, "CLC", 1, 2, AddressingMode::NoneAddressing),
     OpCode::new(0x38, "SEC", 1, 2, AddressingMode::NoneAddressing),
+
+    OpCode::new(0xaa, "TAX", 1, 2, AddressingMode::NoneAddressing),
+
+    OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
+    OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
   ];
 
   pub static ref OPCODES_MAP: HashMap<u8, &'static OpCode> = {
