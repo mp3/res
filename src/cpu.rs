@@ -476,6 +476,11 @@ impl CPU {
         self.stack_push(flags.bits());
     }
 
+    fn pla(&mut self) {
+      let data = self.stack_pop();
+      self.set_register_a(data);
+    }
+
     fn compare(&mut self, mode: &AddressingMode, compare_with: u8) {
       let addr = self.get_operand_address(mode);
       let data = self.mem_read(addr);
@@ -525,6 +530,10 @@ impl CPU {
                 0xAA => self.tax(),
                 0xE8 => self.inx(),
                 0x00 => return,
+                0x48 => self.stack_push(self.register_a),
+                0x68 => {
+                  self.pla();
+                }
                 0x08 => {
                     self.php();
                 }
