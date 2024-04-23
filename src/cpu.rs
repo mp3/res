@@ -344,6 +344,18 @@ impl CPU {
       self.update_zero_and_negative_flags(self.register_y);
     }
 
+    fn branch(&mut self, condition: bool) {
+      if condition {
+        let jump: i8 = self.mem_read(self.program_counter) as i8;
+        let jump_addr = self
+          .program_counter
+          .wrapping_add(1)
+          .wrapping_add(jump as u16);
+
+        self.program_counter = jump_addr;
+      }
+    }
+
     fn set_carry_flag(&mut self) {
         self.status.insert(CpuFlags::CARRY)
     }
@@ -407,6 +419,27 @@ impl CPU {
     fn stack_pop(&mut self) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         self.mem_read((STACK as u16) + self.stack_pointer as u16)
+    }
+
+    fn stack_push_u16(&mut self, data: u16) {
+      let hi = (data >> 8) as u8;
+      let lo = (data & 0xff) as u8;
+      self.stack_push(hi);
+      self.stack_push(lo);
+    }
+
+    fn bit(&mut self, mode: &AddressingMode) {
+      let addr = self.get_operand_address(mode);
+      let data = self.mem_read(addr);
+      let and = self.register_a & data;
+      if and == 0 {
+        self.status.insert(CpuFlags::ZERO);
+      } else {
+        self.status.remove(CpuFlags::ZERO);
+      }
+
+      self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
+      self.status.set(CpuFlags::OVERFLOW, data & 0b10000000 > 0);
     }
 
     fn stack_pop_u16(&mut self) -> u16 {
@@ -482,13 +515,6 @@ impl CPU {
                 0xea => {
                     // do nothing
                 }
-                0x40 => {
-                    self.status.bits = self.stack_pop();
-                    self.status.remove(CpuFlags::BREAK);
-                    self.status.insert(CpuFlags::BREAK2);
-
-                    self.program_counter = self.stack_pop_u16();
-                }
                 0x69 | 0x65 | 0x75 | 0x6d | 0x7d | 0x79 | 0x61 | 0x71 => {
                     self.adc(&opcode.mode);
                 }
@@ -540,6 +566,65 @@ impl CPU {
                     self.compare(&opcode.mode, self.register_y);
                 }
                 0xe0 | 0xe4 | 0xec => self.compare(&opcode.mode, self.register_x),
+                0x4c => {
+                    let mem_address = self.mem_read_u16(self.program_counter);
+                    self.program_counter = mem_address;
+                }
+                0x6c => {
+                    let mem_address = self.mem_read_u16(self.program_counter);
+
+                    let indirect_ref = if mem_address & 0x00FF == 0x00FF {
+                        let lo = self.mem_read(mem_address);
+                        let hi = self.mem_read(mem_address & 0xFF00);
+                        (hi as u16) << 8 | (lo as u16)
+                    } else {
+                        self.mem_read_u16(mem_address)
+                    };
+
+                    self.program_counter = indirect_ref;
+                }
+                0x20 => {
+                    self.stack_push_u16(self.program_counter + 2 - 1);
+                    let target_address = self.mem_read_u16(self.program_counter);
+                    self.program_counter = target_address
+                }
+                0x60 => {
+                    self.program_counter = self.stack_pop_u16() + 1;
+                }
+                0x40 => {
+                    self.status.bits = self.stack_pop();
+                    self.status.remove(CpuFlags::BREAK);
+                    self.status.insert(CpuFlags::BREAK2);
+
+                    self.program_counter = self.stack_pop_u16();
+                }
+                0xd0 => {
+                    self.branch(!self.status.contains(CpuFlags::ZERO));
+                }
+                0x70 => {
+                    self.branch(self.status.contains(CpuFlags::OVERFLOW));
+                }
+                0x50 => {
+                    self.branch(!self.status.contains(CpuFlags::OVERFLOW));
+                }
+                0x10 => {
+                    self.branch(!self.status.contains(CpuFlags::NEGATIV));
+                }
+                0x30 => {
+                    self.branch(self.status.contains(CpuFlags::NEGATIV));
+                }
+                0xf0 => {
+                    self.branch(self.status.contains(CpuFlags::ZERO));
+                }
+                0xb0 => {
+                    self.branch(self.status.contains(CpuFlags::CARRY));
+                }
+                0x90 => {
+                    self.branch(!self.status.contains(CpuFlags::CARRY));
+                }
+                0x24 | 0x2c => {
+                    self.bit(&opcode.mode);
+                }
                 _ => todo!(),
             }
 
@@ -814,5 +899,16 @@ mod test {
         cpu.mem_write(0x10, 0x55);
         cpu.load_and_run(vec![0xc6, 0x10, 0x00]);
         assert_eq!(cpu.mem_read(0x10), 0x54);
+    }
+
+    #[test]
+    fn test_bit() {
+        let mut cpu = CPU::new();
+        cpu.register_a = 0b1100_0000;
+        cpu.mem_write(0x10, 0b1010_1010);
+        cpu.load_and_run(vec![0x24, 0x10, 0x00]);
+        assert!(cpu.status.contains(CpuFlags::ZERO));
+        assert!(cpu.status.contains(CpuFlags::OVERFLOW));
+        assert!(cpu.status.contains(CpuFlags::NEGATIV));
     }
 }
