@@ -2,6 +2,7 @@ pub mod cpu;
 pub mod opcodes;
 use cpu::Mem;
 use cpu::CPU;
+use rand::Rng;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -114,7 +115,19 @@ fn main() {
     cpu.load(game_code);
     cpu.reset();
 
+    let mut screan_state = [0 as u8; 32 * 3 * 32];
+    let mut rng = rand::thread_rng();
+
     cpu.run_with_callback(move |cpu| {
-        // TODO
+        handle_user_input(cpu, &mut event_pump);
+        cpu.mem_write(0xfe, rng.gen_range(1, 16));
+
+        if read_screan_state(cpu, &mut screan_state) {
+            texture.update(None, &screan_state, 32 * 3).unwrap();
+            canvas.copy(&texture, None, None).unwrap();
+            canvas.present();
+        }
+
+        ::std::thread::sleep(std::time::Duration::new(0, 70_000));
     });
 }
