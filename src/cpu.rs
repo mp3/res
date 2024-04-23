@@ -658,6 +658,25 @@ impl CPU {
                     let addr = self.get_operand_address(&opcode.mode);
                     self.mem_write(addr, self.register_y);
                 }
+                0xa8 => {
+                    self.register_y = self.register_a;
+                    self.update_zero_and_negative_flags(self.register_y);
+                }
+                0xba => {
+                    self.register_x = self.stack_pointer;
+                    self.update_zero_and_negative_flags(self.register_x);
+                }
+                0x8a => {
+                    self.register_a = self.register_x;
+                    self.update_zero_and_negative_flags(self.register_a);
+                }
+                0x9a => {
+                    self.stack_pointer = self.register_x;
+                }
+                0x98 => {
+                    self.register_a = self.register_y;
+                    self.update_zero_and_negative_flags(self.register_a);
+                }
                 _ => todo!(),
             }
 

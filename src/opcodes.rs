@@ -194,6 +194,11 @@ lazy_static! {
     OpCode::new(0xf8, "SED", 1, 2, AddressingMode::NoneAddressing),
 
     OpCode::new(0xaa, "TAX", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0xa8, "TAY", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0xba, "TSX", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0x8a, "TXA", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0x9a, "TXS", 1, 2, AddressingMode::NoneAddressing),
+    OpCode::new(0x98, "TYA", 1, 2, AddressingMode::NoneAddressing),
 
     OpCode::new(0x08, "PHP", 1, 3, AddressingMode::NoneAddressing),
     OpCode::new(0x28, "PLP", 1, 4, AddressingMode::NoneAddressing),
