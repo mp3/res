@@ -91,23 +91,23 @@ impl CPU {
             AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
             AddressingMode::ZeroPage_X => {
                 let pos = self.mem_read(self.program_counter);
-                let addr = pos.wrapping_add(self.register_x) as u16;
-                addr
+                
+                pos.wrapping_add(self.register_x) as u16
             }
             AddressingMode::ZeroPage_Y => {
                 let pos = self.mem_read(self.program_counter);
-                let addr = pos.wrapping_add(self.register_y) as u16;
-                addr
+                
+                pos.wrapping_add(self.register_y) as u16
             }
             AddressingMode::Absolute_X => {
                 let base = self.mem_read_u16(self.program_counter);
-                let addr = base.wrapping_add(self.register_x as u16);
-                addr
+                
+                base.wrapping_add(self.register_x as u16)
             }
             AddressingMode::Absolute_Y => {
                 let base = self.mem_read_u16(self.program_counter);
-                let addr = base.wrapping_add(self.register_y as u16);
-                addr
+                
+                base.wrapping_add(self.register_y as u16)
             }
             AddressingMode::Indirect_X => {
                 let base = self.mem_read(self.program_counter);
@@ -123,8 +123,8 @@ impl CPU {
                 let lo = self.mem_read(base as u16);
                 let hi = self.mem_read((base as u8).wrapping_add(1) as u16);
                 let deref_base = (hi as u16) << 8 | (lo as u16);
-                let deref = deref_base.wrapping_add(self.register_y as u16);
-                deref
+                
+                deref_base.wrapping_add(self.register_y as u16)
             }
             AddressingMode::NoneAddressing => {
                 panic!("mode {:?} is not supported", mode)
@@ -211,7 +211,7 @@ impl CPU {
         } else {
             self.clear_carry_flag();
         }
-        data = data << 1;
+        data <<= 1;
         self.set_register_a(data)
     }
 
@@ -223,7 +223,7 @@ impl CPU {
         } else {
             self.clear_carry_flag();
         }
-        data = data << 1;
+        data <<= 1;
         self.mem_write(addr, data);
         self.update_zero_and_negative_flags(data);
         data
@@ -236,7 +236,7 @@ impl CPU {
         } else {
             self.clear_carry_flag();
         }
-        data = data >> 1;
+        data >>= 1;
         self.set_register_a(data);
     }
 
@@ -248,7 +248,7 @@ impl CPU {
         } else {
             self.clear_carry_flag();
         }
-        data = data >> 1;
+        data >>= 1;
         self.mem_write(addr, data);
         self.update_zero_and_negative_flags(data);
         data
@@ -265,10 +265,10 @@ impl CPU {
             self.clear_carry_flag();
         }
 
-        data = data << 1;
+        data <<= 1;
 
         if old_canary {
-            data = data | 1;
+            data |= 1;
         }
         self.mem_write(addr, data);
         self.update_zero_and_negative_flags(data);
@@ -285,9 +285,9 @@ impl CPU {
             self.clear_carry_flag();
         }
 
-        data = data << 1;
+        data <<= 1;
         if old_carry {
-            data = data | 1;
+            data |= 1;
         }
         self.set_register_a(data);
     }
@@ -303,9 +303,9 @@ impl CPU {
             self.clear_carry_flag();
         }
 
-        data = data >> 1;
+        data >>= 1;
         if old_carry {
-            data = data | 0b10000000;
+            data |= 0b10000000;
         }
 
         self.mem_write(addr, data);
@@ -323,9 +323,9 @@ impl CPU {
             self.clear_carry_flag();
         }
 
-        data = data >> 1;
+        data >>= 1;
         if old_carry {
-            data = data | 0b10000000
+            data |= 0b10000000
         }
         self.set_register_a(data);
     }
@@ -470,7 +470,7 @@ impl CPU {
     }
 
     fn php(&mut self) {
-        let mut flags = self.status.clone();
+        let mut flags = self.status;
         flags.insert(CpuFlags::BREAK);
         flags.insert(CpuFlags::BREAK2);
         self.stack_push(flags.bits());
@@ -499,7 +499,7 @@ impl CPU {
     }
 
     pub fn run(&mut self) {
-        let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
+        let opcodes: &HashMap<u8, &'static opcodes::OpCode> = &(*opcodes::OPCODES_MAP);
 
         loop {
             let code = self.mem_read(self.program_counter);
@@ -508,7 +508,7 @@ impl CPU {
 
             let opcode = opcodes
                 .get(&code)
-                .expect(&format!("Opcode {:x} is not recognized", code));
+                .unwrap_or_else(|| panic!("Opcode {:x} is not recognized", code));
 
             match code {
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
@@ -911,7 +911,7 @@ mod test {
         cpu.mem_write(0x10, 0b1000_0001);
         cpu.load_and_run(vec![0x06, 0x10, 0x00]);
         assert_eq!(cpu.mem_read(0x10), 0b0000_0010);
-        assert!(cpu.status.contains(CpuFlags::ZERO) == false);
+        assert!(!cpu.status.contains(CpuFlags::ZERO));
         assert!(cpu.status.contains(CpuFlags::CARRY));
     }
 
