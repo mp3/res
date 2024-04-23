@@ -429,6 +429,18 @@ impl CPU {
         self.stack_push(flags.bits());
     }
 
+    fn compare(&mut self, mode: &AddressingMode, compare_with: u8) {
+      let addr = self.get_operand_address(mode);
+      let data = self.mem_read(addr);
+      if data <= compare_with {
+        self.status.insert(CpuFlags::CARRY);
+      } else {
+        self.status.remove(CpuFlags::CARRY);
+      }
+
+      self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
+    }
+
     pub fn load(&mut self, program: Vec<u8>) {
         self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(0xFFFC, 0x8000);
@@ -521,6 +533,13 @@ impl CPU {
                 0x88 => {
                     self.dey();
                 }
+                0xc9 | 0xc5 | 0xd5 | 0xcd | 0xdd | 0xd9 | 0xc1 | 0xd1 => {
+                    self.compare(&opcode.mode, self.register_a);
+                }
+                0xc0 | 0xc4 | 0xcc => {
+                    self.compare(&opcode.mode, self.register_y);
+                }
+                0xe0 | 0xe4 | 0xec => self.compare(&opcode.mode, self.register_x),
                 _ => todo!(),
             }
 
