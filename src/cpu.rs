@@ -141,17 +141,17 @@ impl CPU {
     }
 
     fn ldx(&mut self, mode: &AddressingMode) {
-      let addr = self.get_operand_address(mode);
-      let data = self.mem_read(addr);
-      self.register_x = data;
-      self.update_zero_and_negative_flags(self.register_x);
+        let addr = self.get_operand_address(mode);
+        let data = self.mem_read(addr);
+        self.register_x = data;
+        self.update_zero_and_negative_flags(self.register_x);
     }
 
     fn ldy(&mut self, mode: &AddressingMode) {
-      let addr = self.get_operand_address(mode);
-      let data = self.mem_read(addr);
-      self.register_y = data;
-      self.update_zero_and_negative_flags(self.register_y);
+        let addr = self.get_operand_address(mode);
+        let data = self.mem_read(addr);
+        self.register_y = data;
+        self.update_zero_and_negative_flags(self.register_y);
     }
 
     fn tax(&mut self) {
@@ -165,8 +165,8 @@ impl CPU {
     }
 
     fn iny(&mut self) {
-      self.register_y = self.register_y.wrapping_add(1);
-      self.update_zero_and_negative_flags(self.register_y);
+        self.register_y = self.register_y.wrapping_add(1);
+        self.update_zero_and_negative_flags(self.register_y);
     }
 
     fn sta(&mut self, mode: &AddressingMode) {
@@ -293,81 +293,81 @@ impl CPU {
     }
 
     fn ror(&mut self, mode: &AddressingMode) -> u8 {
-      let addr = self.get_operand_address(mode);
-      let mut data = self.mem_read(addr);
-      let old_carry = self.status.contains(CpuFlags::CARRY);
+        let addr = self.get_operand_address(mode);
+        let mut data = self.mem_read(addr);
+        let old_carry = self.status.contains(CpuFlags::CARRY);
 
-      if data & 1 == 1 {
-        self.set_carry_flag();
-      } else {
-        self.clear_carry_flag();
-      }
+        if data & 1 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
 
-      data = data >> 1;
-      if old_carry {
-        data = data | 0b10000000;
-      }
+        data = data >> 1;
+        if old_carry {
+            data = data | 0b10000000;
+        }
 
-      self.mem_write(addr, data);
-      self.update_zero_and_negative_flags(data);
-      data
+        self.mem_write(addr, data);
+        self.update_zero_and_negative_flags(data);
+        data
     }
 
     fn ror_accumulator(&mut self) {
-      let mut data = self.register_a;
-      let old_carry = self.status.contains(CpuFlags::CARRY);
+        let mut data = self.register_a;
+        let old_carry = self.status.contains(CpuFlags::CARRY);
 
-      if data & 1 == 1 {
-        self.set_carry_flag();
-      } else {
-        self.clear_carry_flag();
-      }
+        if data & 1 == 1 {
+            self.set_carry_flag();
+        } else {
+            self.clear_carry_flag();
+        }
 
-      data = data >> 1;
-      if old_carry {
-        data = data | 0b10000000
-      }
-      self.set_register_a(data);
+        data = data >> 1;
+        if old_carry {
+            data = data | 0b10000000
+        }
+        self.set_register_a(data);
     }
 
     fn inc(&mut self, mode: &AddressingMode) -> u8 {
-      let addr = self.get_operand_address(mode);
-      let mut data = self.mem_read(addr);
-      data = data.wrapping_add(1);
-      self.mem_write(addr, data);
-      self.update_zero_and_negative_flags(data);
-      data
+        let addr = self.get_operand_address(mode);
+        let mut data = self.mem_read(addr);
+        data = data.wrapping_add(1);
+        self.mem_write(addr, data);
+        self.update_zero_and_negative_flags(data);
+        data
     }
 
     fn dec(&mut self, mode: &AddressingMode) -> u8 {
-      let addr = self.get_operand_address(mode);
-      let mut data = self.mem_read(addr);
-      data = data.wrapping_sub(1);
-      self.mem_write(addr, data);
-      self.update_zero_and_negative_flags(data);
-      data
+        let addr = self.get_operand_address(mode);
+        let mut data = self.mem_read(addr);
+        data = data.wrapping_sub(1);
+        self.mem_write(addr, data);
+        self.update_zero_and_negative_flags(data);
+        data
     }
 
     fn dex(&mut self) {
-      self.register_x = self.register_x.wrapping_sub(1);
-      self.update_zero_and_negative_flags(self.register_x);
+        self.register_x = self.register_x.wrapping_sub(1);
+        self.update_zero_and_negative_flags(self.register_x);
     }
 
     fn dey(&mut self) {
-      self.register_y = self.register_y.wrapping_sub(1);
-      self.update_zero_and_negative_flags(self.register_y);
+        self.register_y = self.register_y.wrapping_sub(1);
+        self.update_zero_and_negative_flags(self.register_y);
     }
 
     fn branch(&mut self, condition: bool) {
-      if condition {
-        let jump: i8 = self.mem_read(self.program_counter) as i8;
-        let jump_addr = self
-          .program_counter
-          .wrapping_add(1)
-          .wrapping_add(jump as u16);
+        if condition {
+            let jump: i8 = self.mem_read(self.program_counter) as i8;
+            let jump_addr = self
+                .program_counter
+                .wrapping_add(1)
+                .wrapping_add(jump as u16);
 
-        self.program_counter = jump_addr;
-      }
+            self.program_counter = jump_addr;
+        }
     }
 
     fn set_carry_flag(&mut self) {
@@ -436,24 +436,24 @@ impl CPU {
     }
 
     fn stack_push_u16(&mut self, data: u16) {
-      let hi = (data >> 8) as u8;
-      let lo = (data & 0xff) as u8;
-      self.stack_push(hi);
-      self.stack_push(lo);
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.stack_push(hi);
+        self.stack_push(lo);
     }
 
     fn bit(&mut self, mode: &AddressingMode) {
-      let addr = self.get_operand_address(mode);
-      let data = self.mem_read(addr);
-      let and = self.register_a & data;
-      if and == 0 {
-        self.status.insert(CpuFlags::ZERO);
-      } else {
-        self.status.remove(CpuFlags::ZERO);
-      }
+        let addr = self.get_operand_address(mode);
+        let data = self.mem_read(addr);
+        let and = self.register_a & data;
+        if and == 0 {
+            self.status.insert(CpuFlags::ZERO);
+        } else {
+            self.status.remove(CpuFlags::ZERO);
+        }
 
-      self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
-      self.status.set(CpuFlags::OVERFLOW, data & 0b10000000 > 0);
+        self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
+        self.status.set(CpuFlags::OVERFLOW, data & 0b10000000 > 0);
     }
 
     fn stack_pop_u16(&mut self) -> u16 {
@@ -477,20 +477,20 @@ impl CPU {
     }
 
     fn pla(&mut self) {
-      let data = self.stack_pop();
-      self.set_register_a(data);
+        let data = self.stack_pop();
+        self.set_register_a(data);
     }
 
     fn compare(&mut self, mode: &AddressingMode, compare_with: u8) {
-      let addr = self.get_operand_address(mode);
-      let data = self.mem_read(addr);
-      if data <= compare_with {
-        self.status.insert(CpuFlags::CARRY);
-      } else {
-        self.status.remove(CpuFlags::CARRY);
-      }
+        let addr = self.get_operand_address(mode);
+        let data = self.mem_read(addr);
+        if data <= compare_with {
+            self.status.insert(CpuFlags::CARRY);
+        } else {
+            self.status.remove(CpuFlags::CARRY);
+        }
 
-      self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
+        self.update_zero_and_negative_flags(compare_with.wrapping_sub(data));
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
@@ -532,7 +532,7 @@ impl CPU {
                 0x00 => return,
                 0x48 => self.stack_push(self.register_a),
                 0x68 => {
-                  self.pla();
+                    self.pla();
                 }
                 0x08 => {
                     self.php();
@@ -572,10 +572,10 @@ impl CPU {
                 }
                 0x6a => self.ror_accumulator(),
                 0x66 | 0x76 | 0x6e | 0x7e => {
-                  self.ror(&opcode.mode);
-                },
+                    self.ror(&opcode.mode);
+                }
                 0xe6 | 0xf6 | 0xee | 0xfe => {
-                  self.inc(&opcode.mode);
+                    self.inc(&opcode.mode);
                 }
                 0xc8 => self.iny(),
                 0xc6 | 0xd6 | 0xce | 0xde => {
