@@ -27,7 +27,9 @@ fn main() {
     canvas.set_scale(10.0, 10.0).unwrap();
 
     let creator = canvas.texture_creator();
-    let mut texture = creator.create_texture_target(PixelFormatEnum, 32, 32).unwrap();
+    let mut texture = creator
+        .create_texture_target(PixelFormatEnum, 32, 32)
+        .unwrap();
 
     let game_code = vec![
         0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02,
