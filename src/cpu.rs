@@ -150,6 +150,11 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_x);
     }
 
+    fn iny(&mut self) {
+      self.register_y = self.register_y.wrapping_add(1);
+      self.update_zero_and_negative_flags(self.register_y);
+    }
+
     fn sta(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         self.mem_write(addr, self.register_a);
@@ -309,6 +314,15 @@ impl CPU {
         data = data | 0b10000000
       }
       self.set_register_a(data);
+    }
+
+    fn inc(&mut self, mode: &AddressingMode) -> u8 {
+      let addr = self.get_operand_address(mode);
+      let mut data = self.mem_read(addr);
+      data = data.wrapping_add(1);
+      self.mem_write(addr, data);
+      self.update_zero_and_negative_flags(data);
+      data
     }
 
     fn set_carry_flag(&mut self) {
@@ -475,6 +489,10 @@ impl CPU {
                 0x66 | 0x76 | 0x6e | 0x7e => {
                   self.ror(&opcode.mode);
                 },
+                0xe6 | 0xf6 | 0xee | 0xfe => {
+                  self.inc(&opcode.mode);
+                }
+                0xc8 => self.iny(),
                 _ => todo!(),
             }
 
