@@ -91,22 +91,22 @@ impl CPU {
             AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
             AddressingMode::ZeroPage_X => {
                 let pos = self.mem_read(self.program_counter);
-                
+
                 pos.wrapping_add(self.register_x) as u16
             }
             AddressingMode::ZeroPage_Y => {
                 let pos = self.mem_read(self.program_counter);
-                
+
                 pos.wrapping_add(self.register_y) as u16
             }
             AddressingMode::Absolute_X => {
                 let base = self.mem_read_u16(self.program_counter);
-                
+
                 base.wrapping_add(self.register_x as u16)
             }
             AddressingMode::Absolute_Y => {
                 let base = self.mem_read_u16(self.program_counter);
-                
+
                 base.wrapping_add(self.register_y as u16)
             }
             AddressingMode::Indirect_X => {
@@ -123,7 +123,7 @@ impl CPU {
                 let lo = self.mem_read(base as u16);
                 let hi = self.mem_read((base as u8).wrapping_add(1) as u16);
                 let deref_base = (hi as u16) << 8 | (lo as u16);
-                
+
                 deref_base.wrapping_add(self.register_y as u16)
             }
             AddressingMode::NoneAddressing => {
@@ -499,9 +499,18 @@ impl CPU {
     }
 
     pub fn run(&mut self) {
-        let opcodes: &HashMap<u8, &'static opcodes::OpCode> = &(*opcodes::OPCODES_MAP);
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(&mut CPU),
+    {
+        let ref opcodes: &HashMap<u8, &'static opcodes::OpCode> = &(*opcodes::OPCODES_MAP);
 
         loop {
+            callback(self);
+
             let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
