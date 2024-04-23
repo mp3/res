@@ -28,7 +28,7 @@ fn main() {
 
     let creator = canvas.texture_creator();
     let mut texture = creator
-        .create_texture_target(PixelFormatEnum, 32, 32)
+        .create_texture_target(PixelFormatEnum::RGB24, 32, 32)
         .unwrap();
 
     let game_code = vec![
