@@ -47,7 +47,7 @@ pub trait Mem {
 
     fn mem_write(&mut self, addr: u16, data: u8);
 
-    fn mem_read_u16(&mut self, pos: u16) -> u16 {
+    fn mem_read_u16(&self, pos: u16) -> u16 {
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos + 1) as u16;
         (hi << 8) | (lo as u16)
@@ -84,7 +84,7 @@ impl CPU {
         }
     }
 
-    fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
+    fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
         match mode {
             AddressingMode::Immediate => self.program_counter,
             AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
