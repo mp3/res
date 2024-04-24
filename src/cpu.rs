@@ -133,7 +133,7 @@ impl CPU {
     }
 
     fn lda(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
+        let addr = self.get_operand_address(&mode);
         let value = self.mem_read(addr);
 
         self.set_register_a(value);
@@ -192,7 +192,7 @@ impl CPU {
     }
 
     fn sbc(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
+        let addr = self.get_operand_address(&mode);
         let data = self.mem_read(addr);
         self.add_to_refister_a(((data as i8).wrapping_neg().wrapping_sub(1)) as u8);
     }
@@ -514,7 +514,7 @@ impl CPU {
 
             let opcode = opcodes
                 .get(&code)
-                .unwrap_or_else(|| panic!("Opcode {:x} is not recognized", code));
+                .unwrap();
 
             match code {
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
