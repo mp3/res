@@ -136,8 +136,7 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
 
-        self.register_a = value;
-        self.update_zero_and_negative_flags(self.register_a);
+        self.set_register_a(value);
     }
 
     fn ldx(&mut self, mode: &AddressingMode) {
@@ -442,6 +441,13 @@ impl CPU {
         self.stack_push(lo);
     }
 
+    fn stack_pop_u16(&mut self) -> u16 {
+      let lo = self.stack_pop() as u16;
+      let hi = self.stack_pop() as u16;
+
+      hi << 8 | lo
+    }
+
     fn bit(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
@@ -453,14 +459,7 @@ impl CPU {
         }
 
         self.status.set(CpuFlags::NEGATIV, data & 0b10000000 > 0);
-        self.status.set(CpuFlags::OVERFLOW, data & 0b10000000 > 0);
-    }
-
-    fn stack_pop_u16(&mut self) -> u16 {
-        let lo = self.stack_pop() as u16;
-        let hi = self.stack_pop() as u16;
-
-        hi << 8 | lo
+        self.status.set(CpuFlags::OVERFLOW, data & 0b01000000 > 0);
     }
 
     fn plp(&mut self) {
@@ -470,7 +469,7 @@ impl CPU {
     }
 
     fn php(&mut self) {
-        let mut flags = self.status;
+        let mut flags = self.status.clone();
         flags.insert(CpuFlags::BREAK);
         flags.insert(CpuFlags::BREAK2);
         self.stack_push(flags.bits());
@@ -509,8 +508,6 @@ impl CPU {
         let ref opcodes: &HashMap<u8, &'static opcodes::OpCode> = &(*opcodes::OPCODES_MAP);
 
         loop {
-            callback(self);
-
             let code = self.mem_read(self.program_counter);
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
@@ -701,6 +698,8 @@ impl CPU {
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
+
+            callback(self);
         }
     }
 
@@ -996,7 +995,7 @@ mod test {
         cpu.mem_write(0x10, 0b1010_1010);
         cpu.load_and_run(vec![0x24, 0x10, 0x00]);
         assert!(cpu.status.contains(CpuFlags::ZERO));
-        assert!(cpu.status.contains(CpuFlags::OVERFLOW));
+        assert!(!cpu.status.contains(CpuFlags::OVERFLOW));
         assert!(cpu.status.contains(CpuFlags::NEGATIV));
     }
 }
