@@ -505,8 +505,24 @@ impl CPU {
         self.mem_write_u16(0xFFFC, 0x8000);
     }
 
+    pub fn reset(&mut self) {
+        self.register_a = 0;
+        self.register_x = 0;
+        self.register_y = 0;
+        self.stack_pointer = STACK_RESET;
+        self.status = CpuFlags::from_bits_truncate(0b100100);
+
+        self.program_counter = self.mem_read_u16(0xFFFC);
+    }
+
     pub fn run(&mut self) {
         self.run_with_callback(|_| {});
+    }
+
+    pub fn load_and_run(&mut self, program: Vec<u8>) {
+        self.load(program);
+        self.reset();
+        self.run();
     }
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
@@ -709,22 +725,6 @@ impl CPU {
 
             callback(self);
         }
-    }
-
-    pub fn reset(&mut self) {
-        self.register_a = 0;
-        self.register_x = 0;
-        self.register_y = 0;
-        self.stack_pointer = STACK_RESET;
-        self.status = CpuFlags::from_bits_truncate(0b100100);
-
-        self.program_counter = self.mem_read_u16(0xFFFC);
-    }
-
-    pub fn load_and_run(&mut self, program: Vec<u8>) {
-        self.load(program);
-        self.reset();
-        self.run();
     }
 }
 
