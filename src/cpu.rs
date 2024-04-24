@@ -194,13 +194,13 @@ impl CPU {
     fn sbc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(&mode);
         let data = self.mem_read(addr);
-        self.add_to_refister_a(((data as i8).wrapping_neg().wrapping_sub(1)) as u8);
+        self.add_to_register_a(((data as i8).wrapping_neg().wrapping_sub(1)) as u8);
     }
 
     fn adc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
-        self.add_to_refister_a(value);
+        self.add_to_register_a(value);
     }
 
     fn asl_accumulator(&mut self) {
@@ -382,7 +382,7 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_a);
     }
 
-    fn add_to_refister_a(&mut self, data: u8) {
+    fn add_to_register_a(&mut self, data: u8) {
         let sum = self.register_a as u16
             + data as u16
             + (if self.status.contains(CpuFlags::CARRY) {
