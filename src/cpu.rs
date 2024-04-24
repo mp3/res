@@ -270,7 +270,7 @@ impl CPU {
             data |= 1;
         }
         self.mem_write(addr, data);
-        self.update_zero_and_negative_flags(data);
+        self.update_negative_flags(data);
         data
     }
 
@@ -308,7 +308,7 @@ impl CPU {
         }
 
         self.mem_write(addr, data);
-        self.update_zero_and_negative_flags(data);
+        self.update_negative_flags(data);
         data
     }
 
@@ -421,6 +421,14 @@ impl CPU {
             self.status.insert(CpuFlags::NEGATIV);
         } else {
             self.status.remove(CpuFlags::NEGATIV);
+        }
+    }
+
+    fn update_negative_flags(&mut self, result: u8) {
+        if result >> 7 == 1 {
+            self.status.insert(CpuFlags::NEGATIV)
+        } else {
+            self.status.remove(CpuFlags::NEGATIV)
         }
     }
 
@@ -942,7 +950,7 @@ mod test {
         assert_eq!(cpu.register_a, 0b0000_0010);
         assert!(cpu.status.contains(CpuFlags::CARRY));
         assert!(!cpu.status.contains(CpuFlags::ZERO));
-        assert!(!cpu.status.contains(CpuFlags::NEGATIV));
+        assert!(cpu.status.contains(CpuFlags::NEGATIV));
     }
 
     #[test]
@@ -954,7 +962,7 @@ mod test {
         assert_eq!(cpu.register_a, 0b0000_0001);
         assert!(cpu.status.contains(CpuFlags::CARRY));
         assert!(!cpu.status.contains(CpuFlags::ZERO));
-        assert!(!cpu.status.contains(CpuFlags::NEGATIV));
+        assert!(cpu.status.contains(CpuFlags::NEGATIV));
     }
 
     #[test]
@@ -965,7 +973,7 @@ mod test {
         assert_eq!(cpu.register_a, 0b0000_0001);
         assert!(!cpu.status.contains(CpuFlags::CARRY));
         assert!(!cpu.status.contains(CpuFlags::ZERO));
-        assert!(!cpu.status.contains(CpuFlags::NEGATIV));
+        assert!(cpu.status.contains(CpuFlags::NEGATIV));
     }
 
     #[test]
@@ -977,7 +985,7 @@ mod test {
         assert_eq!(cpu.register_a, 0b1000_0000);
         assert!(cpu.status.contains(CpuFlags::CARRY));
         assert!(!cpu.status.contains(CpuFlags::ZERO));
-        assert!(cpu.status.contains(CpuFlags::NEGATIV));
+        assert!(!cpu.status.contains(CpuFlags::NEGATIV));
     }
 
     #[test]
