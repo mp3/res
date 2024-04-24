@@ -256,7 +256,7 @@ impl CPU {
     fn rol(&mut self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         let mut data = self.mem_read(addr);
-        let old_canary = self.status.contains(CpuFlags::CARRY);
+        let old_carry = self.status.contains(CpuFlags::CARRY);
 
         if data >> 7 == 1 {
             self.set_carry_flag();
@@ -266,7 +266,7 @@ impl CPU {
 
         data <<= 1;
 
-        if old_canary {
+        if old_carry {
             data |= 1;
         }
         self.mem_write(addr, data);
