@@ -25,9 +25,10 @@
   - `Result` ベースで未対応命令を返却し、どの命令が不足しているかを明示する。
   - ✅ 実施済み: `CpuError::UnsupportedOpcode { opcode, pc }` を追加し、`try_run_with_callback` で未対応命令を `Result` 返却するように変更。
 
-- [ ] **割り込みフローの拡充（IRQ/NMI/BRK の明示的 API）**
+- [x] **割り込みフローの拡充（IRQ/NMI/BRK の明示的 API）**
   - RTI などはあるが、外部イベント起点で割り込みを発火するインターフェースがない。
   - `trigger_nmi` / `trigger_irq` などを追加し、スタック・ベクタ遷移を統一実装する。
+  - ✅ 実施済み: `CPU::trigger_nmi` / `CPU::trigger_irq` / `CPU::trigger_brk` を追加し、割り込み時のスタック保存とベクタ遷移を共通化。
 
 - [ ] **サイクル計測とページクロス加算サイクル対応**
   - オペコード定義にサイクル情報はあるが、実行側でサイクル消費を管理していない。
