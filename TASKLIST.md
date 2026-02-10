@@ -61,9 +61,10 @@
   - `screen` 系へ統一し、検索性と保守性を上げる。
   - ✅ 実施済み: `read_screan_state` / `screan_state` を `read_screen_state` / `screen_state` に統一。
 
-- [ ] **ドキュメント拡充（開発ロードマップ）**
+- [x] **ドキュメント拡充（開発ロードマップ）**
   - README の「Possible next steps」は高レベルの箇条書きに留まる。
   - 本タスクリストを基に、マイルストーン/Done 条件/優先度を README から参照できる形で管理する。
+  - ✅ 実施済み: README に Development roadmap セクションを追加し、3 スプリント構成と Definition of Done を明記。
 
 ## 推奨実施順（最初の 3 スプリント）
 
