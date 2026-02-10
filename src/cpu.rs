@@ -16,6 +16,9 @@ bitflags! {
 
 const STACK: u16 = 0x0100;
 const STACK_RESET: u8 = 0xfd;
+const NMI_VECTOR: u16 = 0xFFFA;
+const RESET_VECTOR: u16 = 0xFFFC;
+const IRQ_BRK_VECTOR: u16 = 0xFFFE;
 
 pub struct CPU {
     pub register_a: u8,
@@ -535,7 +538,7 @@ impl CPU {
 
     pub fn load(&mut self, program: Vec<u8>) {
         self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x0600);
+        self.mem_write_u16(RESET_VECTOR, 0x0600);
     }
 
     pub fn reset(&mut self) {
@@ -545,7 +548,39 @@ impl CPU {
         self.stack_pointer = STACK_RESET;
         self.status = CpuFlags::from_bits_truncate(0b100100);
 
-        self.program_counter = self.mem_read_u16(0xFFFC);
+        self.program_counter = self.mem_read_u16(RESET_VECTOR);
+    }
+
+    fn push_interrupt_state(&mut self, break_flag: bool) {
+        self.stack_push_u16(self.program_counter);
+
+        let mut status = self.status;
+        status.set(CpuFlags::BREAK, break_flag);
+        status.insert(CpuFlags::BREAK2);
+        self.stack_push(status.bits());
+    }
+
+    pub fn trigger_nmi(&mut self) {
+        self.push_interrupt_state(false);
+        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
+        self.program_counter = self.mem_read_u16(NMI_VECTOR);
+    }
+
+    pub fn trigger_irq(&mut self) -> bool {
+        if self.status.contains(CpuFlags::INTERRUPT_DISABLE) {
+            return false;
+        }
+
+        self.push_interrupt_state(false);
+        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
+        self.program_counter = self.mem_read_u16(IRQ_BRK_VECTOR);
+        true
+    }
+
+    pub fn trigger_brk(&mut self) {
+        self.push_interrupt_state(true);
+        self.status.insert(CpuFlags::INTERRUPT_DISABLE);
+        self.program_counter = self.mem_read_u16(IRQ_BRK_VECTOR);
     }
 
     pub fn run(&mut self) {
@@ -1117,6 +1152,73 @@ mod test {
         cpu.mem_write_u16(0xffff, 0x6655);
         assert_eq!(cpu.mem_read(0xffff), 0x55);
         assert_eq!(cpu.mem_read(0x0000), 0x66);
+    }
+
+    #[test]
+    fn test_trigger_nmi_pushes_state_and_loads_vector() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x1234;
+        cpu.status = CpuFlags::from_bits_truncate(0);
+        cpu.mem_write_u16(NMI_VECTOR, 0x4567);
+
+        cpu.trigger_nmi();
+
+        assert_eq!(cpu.program_counter, 0x4567);
+        assert!(cpu.status.contains(CpuFlags::INTERRUPT_DISABLE));
+        assert_eq!(cpu.stack_pointer, STACK_RESET.wrapping_sub(3));
+        assert_eq!(cpu.mem_read(0x01FD), 0x12);
+        assert_eq!(cpu.mem_read(0x01FC), 0x34);
+        assert_eq!(cpu.mem_read(0x01FB), CpuFlags::BREAK2.bits());
+    }
+
+    #[test]
+    fn test_trigger_irq_respects_interrupt_disable_flag() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x1234;
+        cpu.status = CpuFlags::INTERRUPT_DISABLE;
+        cpu.mem_write_u16(IRQ_BRK_VECTOR, 0x4567);
+
+        let handled = cpu.trigger_irq();
+
+        assert!(!handled);
+        assert_eq!(cpu.program_counter, 0x1234);
+        assert_eq!(cpu.stack_pointer, STACK_RESET);
+    }
+
+    #[test]
+    fn test_trigger_irq_pushes_state_and_loads_vector() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x1234;
+        cpu.status = CpuFlags::from_bits_truncate(0);
+        cpu.mem_write_u16(IRQ_BRK_VECTOR, 0x4567);
+
+        let handled = cpu.trigger_irq();
+
+        assert!(handled);
+        assert_eq!(cpu.program_counter, 0x4567);
+        assert!(cpu.status.contains(CpuFlags::INTERRUPT_DISABLE));
+        assert_eq!(cpu.stack_pointer, STACK_RESET.wrapping_sub(3));
+        assert_eq!(cpu.mem_read(0x01FD), 0x12);
+        assert_eq!(cpu.mem_read(0x01FC), 0x34);
+        assert_eq!(cpu.mem_read(0x01FB), CpuFlags::BREAK2.bits());
+    }
+
+    #[test]
+    fn test_trigger_brk_sets_break_bit_on_stack_and_loads_vector() {
+        let mut cpu = CPU::new();
+        cpu.program_counter = 0x1234;
+        cpu.status = CpuFlags::from_bits_truncate(0);
+        cpu.mem_write_u16(IRQ_BRK_VECTOR, 0x4567);
+
+        cpu.trigger_brk();
+
+        assert_eq!(cpu.program_counter, 0x4567);
+        assert!(cpu.status.contains(CpuFlags::INTERRUPT_DISABLE));
+        assert_eq!(cpu.stack_pointer, STACK_RESET.wrapping_sub(3));
+        assert_eq!(
+            cpu.mem_read(0x01FB),
+            (CpuFlags::BREAK | CpuFlags::BREAK2).bits()
+        );
     }
     #[test]
     fn test_try_run_reports_unsupported_opcode() {
