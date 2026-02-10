@@ -24,7 +24,7 @@ pub struct CPU {
     pub status: CpuFlags,
     pub program_counter: u16,
     pub stack_pointer: u8,
-    memory: [u8; 0xffff],
+    memory: [u8; 0x10000],
 }
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ pub trait Mem {
 
     fn mem_read_u16(&self, pos: u16) -> u16 {
         let lo = self.mem_read(pos) as u16;
-        let hi = self.mem_read(pos + 1) as u16;
+        let hi = self.mem_read(pos.wrapping_add(1)) as u16;
         (hi << 8) | (lo as u16)
     }
 
@@ -57,7 +57,7 @@ pub trait Mem {
         let hi = (data >> 8) as u8;
         let lo = (data & 0xff) as u8;
         self.mem_write(pos, lo);
-        self.mem_write(pos + 1, hi);
+        self.mem_write(pos.wrapping_add(1), hi);
     }
 }
 
@@ -80,7 +80,7 @@ impl CPU {
             status: CpuFlags::from_bits_truncate(0b100100),
             program_counter: 0,
             stack_pointer: STACK_RESET,
-            memory: [0; 0xffff],
+            memory: [0; 0x10000],
         }
     }
 
@@ -450,10 +450,10 @@ impl CPU {
     }
 
     fn stack_pop_u16(&mut self) -> u16 {
-      let lo = self.stack_pop() as u16;
-      let hi = self.stack_pop() as u16;
+        let lo = self.stack_pop() as u16;
+        let hi = self.stack_pop() as u16;
 
-      hi << 8 | lo
+        hi << 8 | lo
     }
 
     fn bit(&mut self, mode: &AddressingMode) {
@@ -536,9 +536,7 @@ impl CPU {
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
 
-            let opcode = opcodes
-                .get(&code)
-                .unwrap();
+            let opcode = opcodes.get(&code).unwrap();
 
             match code {
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
@@ -980,5 +978,21 @@ mod test {
         assert!(cpu.status.contains(CpuFlags::ZERO));
         assert!(!cpu.status.contains(CpuFlags::OVERFLOW));
         assert!(cpu.status.contains(CpuFlags::NEGATIV));
+    }
+
+    #[test]
+    fn test_mem_read_u16_wraps_at_top_of_address_space() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0xffff, 0x55);
+        cpu.mem_write(0x0000, 0x66);
+        assert_eq!(cpu.mem_read_u16(0xffff), 0x6655);
+    }
+
+    #[test]
+    fn test_mem_write_u16_wraps_at_top_of_address_space() {
+        let mut cpu = CPU::new();
+        cpu.mem_write_u16(0xffff, 0x6655);
+        assert_eq!(cpu.mem_read(0xffff), 0x55);
+        assert_eq!(cpu.mem_read(0x0000), 0x66);
     }
 }
