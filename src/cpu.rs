@@ -534,8 +534,9 @@ impl CPU {
     where
         F: FnMut(&mut CPU),
     {
-        self.try_run_with_callback(&mut callback)
-            .expect("CPU halted with unsupported opcode");
+        if let Err(err) = self.try_run_with_callback(&mut callback) {
+            panic!("CPU halted with error: {:?}", err);
+        }
     }
 
     pub fn try_run_with_callback<F>(&mut self, callback: &mut F) -> Result<(), CpuError>
