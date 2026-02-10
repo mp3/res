@@ -8,6 +8,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
+use std::env;
 
 #[macro_use]
 extern crate lazy_static;
@@ -131,8 +132,14 @@ fn main() {
 
     let mut screen_state = [0 as u8; 32 * 3 * 32];
     let mut rng = rand::thread_rng();
+    let trace_enabled = env::var("CPU_TRACE")
+        .map(|value| value == "1" || value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
 
     cpu.run_with_callback(move |cpu| {
+        if trace_enabled {
+            println!("{}", cpu.current_trace_state().to_log_line());
+        }
         handle_user_input(cpu, &mut event_pump);
         cpu.mem_write(0xfe, rng.gen_range(1, 16));
 

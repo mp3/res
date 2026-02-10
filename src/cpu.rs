@@ -32,6 +32,34 @@ pub enum CpuError {
     UnsupportedOpcode { opcode: u8, pc: u16 },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TraceState {
+    pub pc: u16,
+    pub opcode: u8,
+    pub mnemonic: &'static str,
+    pub register_a: u8,
+    pub register_x: u8,
+    pub register_y: u8,
+    pub status: u8,
+    pub stack_pointer: u8,
+}
+
+impl TraceState {
+    pub fn to_log_line(&self) -> String {
+        format!(
+            "PC:{:04X} OPC:{:02X} {:<3} A:{:02X} X:{:02X} Y:{:02X} P:{:08b} SP:{:02X}",
+            self.pc,
+            self.opcode,
+            self.mnemonic,
+            self.register_a,
+            self.register_x,
+            self.register_y,
+            self.status,
+            self.stack_pointer
+        )
+    }
+}
+
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub enum AddressingMode {
@@ -539,6 +567,44 @@ impl CPU {
         }
     }
 
+    pub fn run_with_trace<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(TraceState),
+    {
+        if let Err(err) = self.try_run_with_trace(&mut callback) {
+            panic!("CPU halted with error: {:?}", err);
+        }
+    }
+
+    pub fn try_run_with_trace<F>(&mut self, callback: &mut F) -> Result<(), CpuError>
+    where
+        F: FnMut(TraceState),
+    {
+        self.try_run_with_callback(&mut |cpu| callback(cpu.capture_trace_state()))
+    }
+
+    pub fn current_trace_state(&self) -> TraceState {
+        self.capture_trace_state()
+    }
+
+    fn capture_trace_state(&self) -> TraceState {
+        let opcode = self.mem_read(self.program_counter);
+        let mnemonic = opcodes::OPCODES_MAP
+            .get(&opcode)
+            .map_or("???", |op| op.mnemonic);
+
+        TraceState {
+            pc: self.program_counter,
+            opcode,
+            mnemonic,
+            register_a: self.register_a,
+            register_x: self.register_x,
+            register_y: self.register_y,
+            status: self.status.bits(),
+            stack_pointer: self.stack_pointer,
+        }
+    }
+
     pub fn try_run_with_callback<F>(&mut self, callback: &mut F) -> Result<(), CpuError>
     where
         F: FnMut(&mut CPU),
@@ -886,6 +952,35 @@ mod test {
         cpu.mem_write_u16(0x10, 0x6655);
         assert_eq!(cpu.memory[0x10], 0x55);
         assert_eq!(cpu.memory[0x11], 0x66);
+    }
+
+    #[test]
+    fn test_trace_log_contains_registers_and_opcode() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0xa9, 0x05, 0xaa, 0x00]);
+        cpu.reset();
+
+        let mut logs = vec![];
+        cpu.run_with_trace(|trace| logs.push(trace.to_log_line()));
+
+        assert_eq!(logs.len(), 2);
+        assert!(logs[0].contains("PC:0602 OPC:AA TAX"));
+        assert!(logs[1].contains("PC:0603 OPC:00 BRK"));
+        assert!(logs[0].contains("A:05"));
+        assert!(logs[0].contains("X:00"));
+        assert!(logs[0].contains("Y:00"));
+    }
+
+    #[test]
+    fn test_trace_state_falls_back_for_unknown_opcode() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x0600, 0x02);
+        cpu.program_counter = 0x0600;
+
+        let trace = cpu.capture_trace_state();
+
+        assert_eq!(trace.mnemonic, "???");
+        assert_eq!(trace.opcode, 0x02);
     }
 
     #[test]
