@@ -44,6 +44,14 @@ After launch:
 - Use `W / A / S / D` for direction input
 - Press `Esc` or close the window to quit
 
+### Run with instruction trace (optional)
+
+```bash
+CPU_TRACE=1 cargo run
+```
+
+When `CPU_TRACE` is `1` or `true`, the runtime prints one line per executed instruction step (next opcode + registers/flags/stack pointer) from the CPU callback loop.
+
 ## Input and display memory map (demo behavior)
 
 `main.rs` uses specific CPU memory addresses as I/O-style ports in the callback.
@@ -77,7 +85,7 @@ This project tracks progress in 3 short milestones:
   - `todo!()`-based unsupported opcode crash handling replaced with explicit errors
   - Start separating CPU core and SDL frontend
 - **Sprint 2 (observability)**
-  - Add instruction trace logging (toggleable)
+  - ✅ Add instruction trace logging (toggleable)
   - Add cycle accounting (+ branch/page-cross penalties)
 - **Sprint 3 (NES entry point)**
   - Add ROM loader (iNES header + PRG mapping)
