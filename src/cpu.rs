@@ -27,6 +27,11 @@ pub struct CPU {
     memory: [u8; 0x10000],
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum CpuError {
+    UnsupportedOpcode { opcode: u8, pc: u16 },
+}
+
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub enum AddressingMode {
@@ -529,14 +534,32 @@ impl CPU {
     where
         F: FnMut(&mut CPU),
     {
+        if let Err(err) = self.try_run_with_callback(&mut callback) {
+            panic!("CPU halted with error: {:?}", err);
+        }
+    }
+
+    pub fn try_run_with_callback<F>(&mut self, callback: &mut F) -> Result<(), CpuError>
+    where
+        F: FnMut(&mut CPU),
+    {
         let ref opcodes: &HashMap<u8, &'static opcodes::OpCode> = &(*opcodes::OPCODES_MAP);
 
         loop {
             let code = self.mem_read(self.program_counter);
+            let opcode_pc = self.program_counter;
             self.program_counter += 1;
             let program_counter_state = self.program_counter;
 
-            let opcode = opcodes.get(&code).unwrap();
+            let opcode = match opcodes.get(&code) {
+                Some(opcode) => opcode,
+                None => {
+                    return Err(CpuError::UnsupportedOpcode {
+                        opcode: code,
+                        pc: opcode_pc,
+                    })
+                }
+            };
 
             match code {
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
@@ -557,7 +580,7 @@ impl CPU {
 
                 0xAA => self.tax(),
                 0xE8 => self.inx(),
-                0x00 => return,
+                0x00 => return Ok(()),
                 0x48 => self.stack_push(self.register_a),
                 0x68 => {
                     self.pla();
@@ -714,7 +737,12 @@ impl CPU {
                     self.register_a = self.register_y;
                     self.update_zero_and_negative_flags(self.register_a);
                 }
-                _ => todo!(),
+                _ => {
+                    return Err(CpuError::UnsupportedOpcode {
+                        opcode: code,
+                        pc: opcode_pc,
+                    })
+                }
             }
 
             if program_counter_state == self.program_counter {
@@ -994,5 +1022,20 @@ mod test {
         cpu.mem_write_u16(0xffff, 0x6655);
         assert_eq!(cpu.mem_read(0xffff), 0x55);
         assert_eq!(cpu.mem_read(0x0000), 0x66);
+    }
+    #[test]
+    fn test_try_run_reports_unsupported_opcode() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0x02]);
+        cpu.reset();
+
+        let err = cpu.try_run_with_callback(&mut |_| {}).unwrap_err();
+        assert_eq!(
+            err,
+            CpuError::UnsupportedOpcode {
+                opcode: 0x02,
+                pc: 0x0600,
+            }
+        );
     }
 }
