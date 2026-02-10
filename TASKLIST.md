@@ -56,9 +56,10 @@
   - 現状 `cargo test` は環境に SDL2 ライブラリがないと失敗しやすい。
   - CPU コアを別クレート化して、CI でヘッドレステストを安定実行できる形にする。
 
-- [ ] **既存 typo の解消（可読性向上）**
+- [x] **既存 typo の解消（可読性向上）**
   - `read_screan_state` / `screan_state` など命名 typo が存在する。
   - `screen` 系へ統一し、検索性と保守性を上げる。
+  - ✅ 実施済み: `read_screan_state` / `screan_state` を `read_screen_state` / `screen_state` に統一。
 
 - [ ] **ドキュメント拡充（開発ロードマップ）**
   - README の「Possible next steps」は高レベルの箇条書きに留まる。
@@ -74,7 +75,7 @@
 ### Sprint 2（観測性）
 - [ ] 実行トレース実装
 - [ ] サイクル計測導入
-- [ ] typo 修正と命名統一
+- [x] typo 修正と命名統一
 
 ### Sprint 3（NES 入口）
 - [ ] ROM ローダー
