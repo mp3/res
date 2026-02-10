@@ -67,9 +67,27 @@ Color indexes are converted to RGB in `main.rs` via `color()`.
 
 ---
 
-Possible next steps:
-- Add a ROM loader
-- Add instruction execution logging/tracing
-- Split CPU core and SDL frontend into separate lib/bin crates
+## Development roadmap
 
 詳細な不足機能と実装タスクは [`TASKLIST.md`](./TASKLIST.md) を参照してください。
+
+This project tracks progress in 3 short milestones:
+
+- **Sprint 1 (stabilization)**
+  - `todo!()`-based unsupported opcode crash handling replaced with explicit errors
+  - Start separating CPU core and SDL frontend
+- **Sprint 2 (observability)**
+  - Add instruction trace logging (toggleable)
+  - Add cycle accounting (+ branch/page-cross penalties)
+- **Sprint 3 (NES entry point)**
+  - Add ROM loader (iNES header + PRG mapping)
+  - Add Mapper 0 (NROM)
+  - Add minimal PPU register/VRAM scaffold
+
+### Definition of Done (per milestone)
+
+- **Milestone complete** when all tasks in that sprint are checked in [`TASKLIST.md`](./TASKLIST.md).
+- **Task complete** when:
+  - behavior is implemented,
+  - there is at least one test or reproducible manual check,
+  - and README/TASKLIST status is updated.
