@@ -71,3 +71,5 @@ Possible next steps:
 - Add a ROM loader
 - Add instruction execution logging/tracing
 - Split CPU core and SDL frontend into separate lib/bin crates
+
+詳細な不足機能と実装タスクは [`TASKLIST.md`](./TASKLIST.md) を参照してください。
