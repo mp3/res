@@ -14,12 +14,14 @@ Although the window title in `main.rs` says `NES Emulator`, the current code is 
 
 ## Project structure
 
+- `src/lib.rs`  
+  Library crate entry point that exposes the reusable CPU core modules (`cpu`, `opcodes`).
 - `src/cpu.rs`  
-  Core CPU implementation (registers, memory, instruction execution, stack, branching, instruction handlers) plus unit tests.
+  Core CPU implementation (registers, memory, instruction execution, stack, branching, instruction handlers) plus unit tests, exported via `lib.rs`.
 - `src/opcodes.rs`  
-  Opcode metadata definitions (mnemonic, length, cycles, addressing mode) and map construction.
+  Opcode metadata definitions (mnemonic, length, cycles, addressing mode) and map construction, exported via `lib.rs`.
 - `src/main.rs`  
-  SDL2 setup, input handling, rendering, random-byte injection, game bytecode loading, and runtime loop.
+  SDL2 demo frontend (window/input/render loop) that consumes the CPU library.
 
 ## How to run
 
@@ -83,7 +85,7 @@ This project tracks progress in 3 short milestones:
 
 - **Sprint 1 (stabilization)**
   - `todo!()`-based unsupported opcode crash handling replaced with explicit errors
-  - Start separating CPU core and SDL frontend
+  - ✅ Start separating CPU core and SDL frontend (`lib.rs` + SDL frontend `main.rs`)
 - **Sprint 2 (observability)**
   - ✅ Add instruction trace logging (toggleable)
   - Add cycle accounting (+ branch/page-cross penalties)
