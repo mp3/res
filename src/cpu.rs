@@ -1368,10 +1368,10 @@ mod test {
     #[test]
     fn test_absolute_y_page_cross_adds_cycle() {
         let mut cpu = CPU::new();
-        cpu.register_y = 1;
         cpu.mem_write(0x0100, 0x07);
         cpu.load(vec![0xb9, 0xff, 0x00, 0x00]);
         cpu.reset();
+        cpu.register_y = 1;
 
         cpu.try_run_with_callback(&mut |_| {}).unwrap();
 
