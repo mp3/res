@@ -1,4 +1,7 @@
 use crate::opcodes;
+use crate::ppu::Ppu;
+use crate::rom::Mirroring;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 bitflags! {
@@ -29,6 +32,7 @@ pub struct CPU {
     pub stack_pointer: u8,
     cycles: u64,
     memory: [u8; 0x10000],
+    ppu: RefCell<Ppu>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -105,11 +109,23 @@ pub trait Mem {
 
 impl Mem for CPU {
     fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
+        match addr {
+            0x2000..=0x3FFF => {
+                let reg = 0x2000 + ((addr - 0x2000) % 8);
+                self.ppu.borrow_mut().read_register(reg)
+            }
+            _ => self.memory[addr as usize],
+        }
     }
 
     fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
+        match addr {
+            0x2000..=0x3FFF => {
+                let reg = 0x2000 + ((addr - 0x2000) % 8);
+                self.ppu.borrow_mut().write_register(reg, data);
+            }
+            _ => self.memory[addr as usize] = data,
+        }
     }
 }
 
@@ -124,7 +140,12 @@ impl CPU {
             stack_pointer: STACK_RESET,
             cycles: 0,
             memory: [0; 0x10000],
+            ppu: RefCell::new(Ppu::new(Mirroring::Horizontal)),
         }
+    }
+
+    pub fn set_ppu_mirroring(&mut self, mirroring: Mirroring) {
+        self.ppu.borrow_mut().set_mirroring(mirroring);
     }
 
     fn did_page_cross(&self, mode: &AddressingMode) -> bool {
@@ -1294,6 +1315,41 @@ mod test {
         cpu.mem_write_u16(0xffff, 0x6655);
         assert_eq!(cpu.mem_read(0xffff), 0x55);
         assert_eq!(cpu.mem_read(0x0000), 0x66);
+    }
+
+    #[test]
+    fn test_ppu_register_mirror_write_2008_maps_to_2000() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x2008, 0x04);
+
+        cpu.mem_write(0x2006, 0x20);
+        cpu.mem_write(0x2006, 0x00);
+        cpu.mem_write(0x2007, 0x11);
+        cpu.mem_write(0x2007, 0x22);
+
+        cpu.mem_write(0x2006, 0x20);
+        cpu.mem_write(0x2006, 0x00);
+        assert_eq!(cpu.mem_read(0x2007), 0x00);
+        assert_eq!(cpu.mem_read(0x2007), 0x11);
+
+        cpu.mem_write(0x2006, 0x20);
+        cpu.mem_write(0x2006, 0x20);
+        assert_eq!(cpu.mem_read(0x2007), 0x22);
+        assert_eq!(cpu.mem_read(0x2007), 0x22);
+    }
+
+    #[test]
+    fn test_ppu_register_mirror_access_via_3fff_maps_to_2007() {
+        let mut cpu = CPU::new();
+
+        cpu.mem_write(0x2006, 0x20);
+        cpu.mem_write(0x2006, 0x00);
+        cpu.mem_write(0x3fff, 0x55);
+
+        cpu.mem_write(0x2006, 0x20);
+        cpu.mem_write(0x2006, 0x00);
+        assert_eq!(cpu.mem_read(0x3fff), 0x00);
+        assert_eq!(cpu.mem_read(0x3fff), 0x55);
     }
 
     #[test]

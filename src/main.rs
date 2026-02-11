@@ -1,6 +1,6 @@
+use rand::Rng;
 use res::cpu::{Mem, CPU};
 use res::rom::{Rom, RomError};
-use rand::Rng;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -97,8 +97,8 @@ fn try_load_rom_from_cli(cpu: &mut CPU) -> Result<bool, String> {
         None => return Ok(false),
     };
 
-    let rom_bytes = fs::read(&rom_path)
-        .map_err(|err| format!("failed to read ROM '{}': {}", rom_path, err))?;
+    let rom_bytes =
+        fs::read(&rom_path).map_err(|err| format!("failed to read ROM '{}': {}", rom_path, err))?;
     let rom = Rom::from_bytes(&rom_bytes).map_err(|err| format_rom_error(&rom_path, err))?;
     if rom.mapper != 0 {
         return Err(format!(
@@ -107,6 +107,7 @@ fn try_load_rom_from_cli(cpu: &mut CPU) -> Result<bool, String> {
         ));
     }
 
+    cpu.set_ppu_mirroring(rom.mirroring);
     cpu.load_prg_rom(&rom.prg_rom)
         .map_err(|err| format!("failed to map PRG ROM '{}': {:?}", rom_path, err))?;
     Ok(true)

@@ -44,9 +44,10 @@
 
 ## 3. NES 化に向けた拡張
 
-- [ ] **PPU 最小実装（描画レジスタ/VRAM ミラーの骨格）**
+- [x] **PPU 最小実装（描画レジスタ/VRAM ミラーの骨格）**
   - 現在は `0x0200..0x05FF` を独自フレームバッファとして使用しており、NES PPU とは別仕様。
   - まずは CPU メモリマップ上の PPU レジスタ挙動の最小実装を行う。
+  - ✅ 実施済み: `src/ppu.rs` を追加し、`0x2000..0x3FFF` レジスタミラー、`PPUCTRL/PPUMASK/PPUSTATUS/PPUADDR/PPUDATA` の最小挙動、ネームテーブル水平/垂直ミラー、`0x3000..0x3EFF` とパレットミラー（`0x3F10` など）を実装。`CPU` 側で PPU バスへ分岐し、ROM の mirroring 設定を `main.rs` から反映。
 
 - [ ] **APU/音声のスタブ実装**
   - 音声系 I/O が未実装。
@@ -87,4 +88,4 @@
 ### Sprint 3（NES 入口）
 - [x] ROM ローダー
 - [ ] Mapper 0（NROM）
-- [ ] PPU 最小実装
+- [x] PPU 最小実装

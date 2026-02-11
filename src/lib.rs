@@ -6,4 +6,5 @@ extern crate bitflags;
 
 pub mod cpu;
 pub mod opcodes;
+pub mod ppu;
 pub mod rom;
