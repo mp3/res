@@ -1,0 +1,13 @@
+[package]
+name = "res-sdl"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "res-sdl"
+path = "src/main.rs"
+
+[dependencies]
+res-core = { path = "../res-core" }
+sdl2 = "0.34.0"
+rand = "=0.7.3"

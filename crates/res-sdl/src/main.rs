@@ -1,6 +1,6 @@
 use rand::Rng;
-use res::cpu::{CpuLoadError, Mem, CPU};
-use res::rom::{Rom, RomError};
+use res_core::cpu::{CpuLoadError, Mem, CPU};
+use res_core::rom::{Rom, RomError};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
