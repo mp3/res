@@ -1,5 +1,5 @@
 use rand::Rng;
-use res::cpu::{Mem, CPU};
+use res::cpu::{CpuLoadError, Mem, CPU};
 use res::rom::{Rom, RomError};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -91,6 +91,23 @@ fn format_rom_error(path: &str, err: RomError) -> String {
     }
 }
 
+fn format_cpu_load_error(path: &str, err: CpuLoadError) -> String {
+    match err {
+        CpuLoadError::InvalidPrgSize(size) => {
+            format!(
+                "failed to map PRG ROM '{}': invalid PRG size {} (expected 16KB or 32KB)",
+                path, size
+            )
+        }
+        CpuLoadError::UnsupportedMapper(mapper) => {
+            format!(
+                "failed to load ROM '{}': unsupported mapper {} (only mapper 0/NROM is supported)",
+                path, mapper
+            )
+        }
+    }
+}
+
 fn try_load_rom_from_cli(cpu: &mut CPU) -> Result<bool, String> {
     let rom_path = match env::args().nth(1) {
         Some(path) => path,
@@ -100,16 +117,8 @@ fn try_load_rom_from_cli(cpu: &mut CPU) -> Result<bool, String> {
     let rom_bytes =
         fs::read(&rom_path).map_err(|err| format!("failed to read ROM '{}': {}", rom_path, err))?;
     let rom = Rom::from_bytes(&rom_bytes).map_err(|err| format_rom_error(&rom_path, err))?;
-    if rom.mapper != 0 {
-        return Err(format!(
-            "failed to load ROM '{}': unsupported mapper {}",
-            rom_path, rom.mapper
-        ));
-    }
-
-    cpu.set_ppu_mirroring(rom.mirroring);
-    cpu.load_prg_rom(&rom.prg_rom)
-        .map_err(|err| format!("failed to map PRG ROM '{}': {:?}", rom_path, err))?;
+    cpu.load_cartridge(rom)
+        .map_err(|err| format_cpu_load_error(&rom_path, err))?;
     Ok(true)
 }
 

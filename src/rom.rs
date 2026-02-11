@@ -24,6 +24,7 @@ pub struct Rom {
     pub chr_rom: Vec<u8>,
     pub mapper: u8,
     pub mirroring: Mirroring,
+    pub has_chr_ram: bool,
 }
 
 impl Rom {
@@ -70,12 +71,14 @@ impl Rom {
         let prg_rom = raw[cursor..cursor + prg_size].to_vec();
         cursor += prg_size;
         let chr_rom = raw[cursor..cursor + chr_size].to_vec();
+        let has_chr_ram = chr_rom_banks == 0;
 
         Ok(Rom {
             prg_rom,
             chr_rom,
             mapper,
             mirroring,
+            has_chr_ram,
         })
     }
 }
@@ -106,6 +109,7 @@ mod test {
         assert_eq!(rom.mirroring, Mirroring::Horizontal);
         assert_eq!(rom.prg_rom, prg);
         assert_eq!(rom.chr_rom, chr);
+        assert!(!rom.has_chr_ram);
     }
 
     #[test]
@@ -117,6 +121,7 @@ mod test {
         let rom = Rom::from_bytes(&raw).unwrap();
         assert_eq!(rom.prg_rom, prg);
         assert!(rom.chr_rom.is_empty());
+        assert!(rom.has_chr_ram);
     }
 
     #[test]

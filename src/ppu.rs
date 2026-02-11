@@ -1,4 +1,7 @@
+use crate::mapper::Mapper;
 use crate::rom::Mirroring;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const PPU_CTRL: u16 = 0x2000;
 const PPU_MASK: u16 = 0x2001;
@@ -23,6 +26,7 @@ pub struct Ppu {
     palette_table: [u8; 32],
     oam_data: [u8; 256],
     mirroring: Mirroring,
+    mapper: Option<Rc<RefCell<dyn Mapper>>>,
 }
 
 impl Ppu {
@@ -41,11 +45,16 @@ impl Ppu {
             palette_table: [0; 32],
             oam_data: [0; 256],
             mirroring,
+            mapper: None,
         }
     }
 
     pub fn set_mirroring(&mut self, mirroring: Mirroring) {
         self.mirroring = mirroring;
+    }
+
+    pub fn set_mapper(&mut self, mapper: Option<Rc<RefCell<dyn Mapper>>>) {
+        self.mapper = mapper;
     }
 
     pub fn read_register(&mut self, reg: u16) -> u8 {
@@ -141,7 +150,12 @@ impl Ppu {
 
     fn ppu_mem_read(&self, addr: u16) -> u8 {
         match addr {
-            0x0000..=0x1FFF => 0,
+            0x0000..=0x1FFF => {
+                if let Some(mapper) = &self.mapper {
+                    return mapper.borrow().ppu_read(addr).unwrap_or(0);
+                }
+                0
+            }
             0x2000..=0x2FFF => {
                 let idx = self.mirror_vram_addr(addr);
                 self.vram[idx]
@@ -161,7 +175,11 @@ impl Ppu {
 
     fn ppu_mem_write(&mut self, addr: u16, data: u8) {
         match addr {
-            0x0000..=0x1FFF => {}
+            0x0000..=0x1FFF => {
+                if let Some(mapper) = &self.mapper {
+                    mapper.borrow_mut().ppu_write(addr, data);
+                }
+            }
             0x2000..=0x2FFF => {
                 let idx = self.mirror_vram_addr(addr);
                 self.vram[idx] = data;
@@ -220,6 +238,9 @@ impl Ppu {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::mapper::NromMapper;
+    use std::cell::RefCell;
+    use std::rc::Rc;
 
     fn set_ppu_addr(ppu: &mut Ppu, addr: u16) {
         ppu.write_register(PPU_ADDR, (addr >> 8) as u8);
@@ -337,5 +358,30 @@ mod test {
 
         set_ppu_addr(&mut ppu, 0x2000);
         assert_eq!(ppu.read_register(PPU_DATA), 0x44);
+    }
+
+    #[test]
+    fn test_pattern_table_reads_from_mapper_chr_rom() {
+        let mut ppu = Ppu::new(Mirroring::Horizontal);
+        let mapper = NromMapper::new(vec![0; 0x4000], vec![0xAB; 0x2000], false).unwrap();
+        ppu.set_mapper(Some(Rc::new(RefCell::new(mapper))));
+
+        set_ppu_addr(&mut ppu, 0x0000);
+        assert_eq!(ppu.read_register(PPU_DATA), 0x00);
+        assert_eq!(ppu.read_register(PPU_DATA), 0xAB);
+    }
+
+    #[test]
+    fn test_pattern_table_writes_to_mapper_chr_ram() {
+        let mut ppu = Ppu::new(Mirroring::Horizontal);
+        let mapper = NromMapper::new(vec![0; 0x4000], vec![], true).unwrap();
+        ppu.set_mapper(Some(Rc::new(RefCell::new(mapper))));
+
+        set_ppu_addr(&mut ppu, 0x0002);
+        ppu.write_register(PPU_DATA, 0xCD);
+
+        set_ppu_addr(&mut ppu, 0x0002);
+        assert_eq!(ppu.read_register(PPU_DATA), 0x00);
+        assert_eq!(ppu.read_register(PPU_DATA), 0xCD);
     }
 }

@@ -53,9 +53,10 @@
   - 音声系 I/O が未実装。
   - まずはレジスタ書込受付のみのスタブを追加し、将来的な音源実装に備える。
 
-- [ ] **Mapper 0（NROM）対応**
+- [x] **Mapper 0（NROM）対応**
   - カートリッジごとのバンク切替機構が未対応。
   - 最初の対象として NROM 固定マッピングを実装する。
+  - ✅ 実施済み: `src/mapper.rs` に `Mapper` trait と `NromMapper` を追加し、CPU の `0x8000..0xFFFF` PRG 読み出しを mapper 経由へ移行。PPU の `0x0000..0x1FFF` を CHR と接続し、`CHR ROM` は read-only、`CHR=0` は `8KB CHR RAM` を割り当てる実装とテストを追加。
 
 ## 4. 品質・運用
 
@@ -87,5 +88,5 @@
 
 ### Sprint 3（NES 入口）
 - [x] ROM ローダー
-- [ ] Mapper 0（NROM）
+- [x] Mapper 0（NROM）
 - [x] PPU 最小実装
