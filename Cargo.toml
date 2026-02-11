@@ -1,12 +1,7 @@
-[package]
-name = "res"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-lazy_static = "1.4.0"
-bitflags = "1.2.1"
-sdl2 = "0.34.0"
-rand = "=0.7.3"
+[workspace]
+members = [
+  "crates/res-core",
+  "crates/res-sdl",
+]
+default-members = ["crates/res-core"]
+resolver = "2"

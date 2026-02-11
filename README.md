@@ -1,45 +1,43 @@
 # res
 
-This is a learning-oriented Rust project that implements a **6502 CPU emulator** and runs an SDL2-rendered demo game (snake-like).
+This is a learning-oriented Rust project that implements a **6502 CPU emulator core** and an SDL2-rendered demo frontend.
 
-Although the window title in `main.rs` says `NES Emulator`, the current code is **not a full NES emulator** (no full PPU/APU/mapper pipeline). Instead, it loads game bytecode into a 6502 execution environment and runs it.
+Although the window title says `NES Emulator`, this repository is still **not a full NES emulator** (no full PPU/APU/mapper pipeline yet).
 
-## What this project is
+## Workspace layout
 
-- Implements 6502 CPU registers, flags, stack behavior, and addressing modes in Rust
-- Defines an opcode table in `opcodes.rs`
-- Runs the CPU in `run_with_callback`, integrating input, random values, and rendering in the callback
-- Displays a 32x32 pseudo frame buffer scaled by 10x via SDL2
-- Runs a snake-like demo controlled by WASD input
+- `crates/res-core`
+  - SDL-free reusable library crate (`res_core`)
+  - Contains CPU/opcodes/ROM/mapper/PPU core modules and unit tests
+- `crates/res-sdl`
+  - SDL2 demo frontend binary crate (`res-sdl`)
+  - Consumes `res_core` and provides window/input/render loop
 
-## Project structure
-
-- `src/lib.rs`  
-  Library crate entry point that exposes the reusable CPU core modules (`cpu`, `opcodes`).
-- `src/cpu.rs`  
-  Core CPU implementation (registers, memory, instruction execution, stack, branching, instruction handlers) plus unit tests, exported via `lib.rs`.
-- `src/opcodes.rs`  
-  Opcode metadata definitions (mnemonic, length, cycles, addressing mode) and map construction, exported via `lib.rs`.
-- `src/main.rs`  
-  SDL2 demo frontend (window/input/render loop) that consumes the CPU library.
-
-## How to run
-
-### Requirements
+## Requirements
 
 - Rust (`cargo`)
-- SDL2 development library (`libSDL2` available on the system)
+- SDL2 development library (`libSDL2`) only for building/running `res-sdl`
 
-### Build check
+## Commands
+
+### Test core (SDL2 not required)
 
 ```bash
-cargo check
+cargo test
 ```
 
-### Run
+`default-members` is configured to run core tests by default.
+
+### Build SDL frontend
 
 ```bash
-cargo run
+cargo build -p res-sdl
+```
+
+### Run demo
+
+```bash
+cargo run -p res-sdl
 ```
 
 After launch:
@@ -49,65 +47,43 @@ After launch:
 ### Run with iNES ROM (Mapper 0 / NROM only)
 
 ```bash
-cargo run -- path/to/game.nes
+cargo run -p res-sdl -- path/to/game.nes
 ```
 
-When a ROM path is provided, the runtime parses the iNES header, accepts only mapper 0, and maps PRG ROM at `0x8000..0xFFFF` (with 16KB mirroring when needed).  
-Mapper 0 now wires both PRG and CHR: for `CHR ROM` cartridges, PPU pattern table reads (`0x0000..0x1FFF`) come from ROM and writes are ignored; when the ROM has `0` CHR banks, the emulator allocates `8KB CHR RAM` and allows reads/writes there.
-When no ROM path is provided, it falls back to the built-in demo bytecode.
+When no ROM path is provided, it falls back to built-in demo bytecode.
 
 ### Run with instruction trace (optional)
 
 ```bash
-CPU_TRACE=1 cargo run
+CPU_TRACE=1 cargo run -p res-sdl
 ```
-
-When `CPU_TRACE` is `1` or `true`, the runtime prints one line per executed instruction step (next opcode + registers/flags/stack pointer) from the CPU callback loop.
 
 ## Input and display memory map (demo behavior)
 
-`main.rs` uses specific CPU memory addresses as I/O-style ports in the callback.
+`crates/res-sdl/src/main.rs` uses these CPU memory addresses as I/O-style ports:
 
 - `0x00FF`: keyboard input (`w/s/a/d` ASCII values)
 - `0x00FE`: per-frame random value in range `1..15`
 - `0x0200..0x05FF`: 32x32 display buffer (`1 byte = color index`)
 
-Color indexes are converted to RGB in `main.rs` via `color()`.
-
-## Currently implemented (high level)
-
-- Major 6502 instruction groups (`LDA/STA/ADC/SBC/AND/EOR/ORA`, shifts/rotates, compare, branches, stack ops, etc.)
-- Multiple addressing modes (Immediate / ZeroPage / Absolute / Indirect variants, etc.)
-- Unit tests in `cpu.rs`
-
 ## Notes
 
-- This is an educational/experimental implementation, not a complete NES emulator.
-- Depending on your environment, `cargo test` / `cargo run` may require proper SDL2 linker setup.
-
----
+- This is an educational/experimental implementation.
+- Full NES compatibility is out of scope for current state.
 
 ## Development roadmap
 
-詳細な不足機能と実装タスクは [`TASKLIST.md`](./TASKLIST.md) を参照してください。
-
-This project tracks progress in 3 short milestones:
+Detailed tasks are tracked in [`TASKLIST.md`](./TASKLIST.md).
 
 - **Sprint 1 (stabilization)**
-  - `todo!()`-based unsupported opcode crash handling replaced with explicit errors
-  - ✅ Start separating CPU core and SDL frontend (`lib.rs` + SDL frontend `main.rs`)
+  - ✅ Memory space fix (`[u8; 0x10000]`)
+  - ✅ Unsupported opcode handling via explicit errors
+  - ✅ Initial CPU/SDL separation
 - **Sprint 2 (observability)**
-  - ✅ Add instruction trace logging (toggleable)
-  - Add cycle accounting (+ branch/page-cross penalties)
+  - ✅ Instruction trace logging
+  - ✅ Cycle accounting (+ branch/page-cross penalties)
+  - ✅ Typo cleanup and naming consistency
 - **Sprint 3 (NES entry point)**
-  - ✅ Add ROM loader (iNES header + PRG mapping, mapper 0 only)
-  - ✅ Add Mapper 0 (NROM)
-  - Add minimal PPU register/VRAM scaffold
-
-### Definition of Done (per milestone)
-
-- **Milestone complete** when all tasks in that sprint are checked in [`TASKLIST.md`](./TASKLIST.md).
-- **Task complete** when:
-  - behavior is implemented,
-  - there is at least one test or reproducible manual check,
-  - and README/TASKLIST status is updated.
+  - ✅ ROM loader (iNES + mapper 0 validation)
+  - ✅ Mapper 0 (NROM)
+  - ✅ Minimal PPU scaffold

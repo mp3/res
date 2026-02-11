@@ -6,14 +6,14 @@
 ## 1. エミュレータ基盤
 
 - [x] **ROM ローダー実装（iNES/NES ヘッダ読込）**
-  - 現在は `main.rs` にゲームバイトコードをハードコードしているため、外部 ROM を実行できない。
+  - 現在は `crates/res-sdl/src/main.rs` にゲームバイトコードをハードコードしているため、外部 ROM を実行できない。
   - まずはファイル読込 + PRG ROM を CPU アドレス空間へマップする最小実装を追加する。
-  - ✅ 実施済み: `src/rom.rs` に iNES ローダー（mapper 0 限定、trainer スキップ対応）を追加し、`main.rs` で CLI 引数の `.nes` を読込。`CPU::load_prg_rom` で PRG 16KB/32KB の `0x8000..0xFFFF` マップを実装。
+  - ✅ 実施済み: `crates/res-core/src/rom.rs` に iNES ローダー（mapper 0 限定、trainer スキップ対応）を追加し、`crates/res-sdl/src/main.rs` で CLI 引数の `.nes` を読込。`CPU::load_prg_rom` で PRG 16KB/32KB の `0x8000..0xFFFF` マップを実装。
 
 - [x] **CPU コアをライブラリ化し、SDL フロントエンドと分離**
   - 実行環境（CLI/SDL）と CPU コアが密結合になっているため、再利用とテストがしづらい。
   - `lib.rs`（CPUコア）+ `bin`（デモ実行）構成へ分割する。
-  - ✅ 実施済み（最小分離）: `src/lib.rs` を追加して `cpu`/`opcodes` をライブラリ公開し、`main.rs` は `res::cpu` を利用する SDL フロントエンドに整理。
+  - ✅ 実施済み（最小分離）: `crates/res-core/src/lib.rs` を追加して `cpu`/`opcodes` をライブラリ公開し、`crates/res-sdl/src/main.rs` は `res_core::cpu` を利用する SDL フロントエンドに整理。
 
 - [x] **実行トレース（命令/レジスタ/フラグ）機能**
   - デバッグ時に命令単位の可視化がないため、問題切り分けに時間がかかる。
@@ -47,7 +47,7 @@
 - [x] **PPU 最小実装（描画レジスタ/VRAM ミラーの骨格）**
   - 現在は `0x0200..0x05FF` を独自フレームバッファとして使用しており、NES PPU とは別仕様。
   - まずは CPU メモリマップ上の PPU レジスタ挙動の最小実装を行う。
-  - ✅ 実施済み: `src/ppu.rs` を追加し、`0x2000..0x3FFF` レジスタミラー、`PPUCTRL/PPUMASK/PPUSTATUS/PPUADDR/PPUDATA` の最小挙動、ネームテーブル水平/垂直ミラー、`0x3000..0x3EFF` とパレットミラー（`0x3F10` など）を実装。`CPU` 側で PPU バスへ分岐し、ROM の mirroring 設定を `main.rs` から反映。
+  - ✅ 実施済み: `crates/res-core/src/ppu.rs` を追加し、`0x2000..0x3FFF` レジスタミラー、`PPUCTRL/PPUMASK/PPUSTATUS/PPUADDR/PPUDATA` の最小挙動、ネームテーブル水平/垂直ミラー、`0x3000..0x3EFF` とパレットミラー（`0x3F10` など）を実装。`CPU` 側で PPU バスへ分岐し、ROM の mirroring 設定を `crates/res-sdl/src/main.rs` から反映。
 
 - [ ] **APU/音声のスタブ実装**
   - 音声系 I/O が未実装。
@@ -56,13 +56,14 @@
 - [x] **Mapper 0（NROM）対応**
   - カートリッジごとのバンク切替機構が未対応。
   - 最初の対象として NROM 固定マッピングを実装する。
-  - ✅ 実施済み: `src/mapper.rs` に `Mapper` trait と `NromMapper` を追加し、CPU の `0x8000..0xFFFF` PRG 読み出しを mapper 経由へ移行。PPU の `0x0000..0x1FFF` を CHR と接続し、`CHR ROM` は read-only、`CHR=0` は `8KB CHR RAM` を割り当てる実装とテストを追加。
+  - ✅ 実施済み: `crates/res-core/src/mapper.rs` に `Mapper` trait と `NromMapper` を追加し、CPU の `0x8000..0xFFFF` PRG 読み出しを mapper 経由へ移行。PPU の `0x0000..0x1FFF` を CHR と接続し、`CHR ROM` は read-only、`CHR=0` は `8KB CHR RAM` を割り当てる実装とテストを追加。
 
 ## 4. 品質・運用
 
-- [ ] **SDL2 依存を分離し、CPU 単体テストをリンク不要で実行可能にする**
+- [x] **SDL2 依存を分離し、CPU 単体テストをリンク不要で実行可能にする**
   - 現状 `cargo test` は環境に SDL2 ライブラリがないと失敗しやすい。
   - CPU コアを別クレート化して、CI でヘッドレステストを安定実行できる形にする。
+  - ✅ 実施済み: Cargo workspace を導入し、`crates/res-core`（SDL 非依存）と `crates/res-sdl`（SDL frontend）へ分離。root の `default-members` を `res-core` のみに設定して `cargo test` を SDL リンク不要化。CI も `core-test`（SDL 不要）/`frontend-build`（SDL 必須）へ分割。
 
 - [x] **既存 typo の解消（可読性向上）**
   - `read_screan_state` / `screan_state` など命名 typo が存在する。
