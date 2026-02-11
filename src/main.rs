@@ -1,4 +1,5 @@
 use res::cpu::{Mem, CPU};
+use res::rom::{Rom, RomError};
 use rand::Rng;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -6,6 +7,8 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 use std::env;
+use std::fs;
+use std::process;
 
 fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
     for event in event_pump.poll_iter() {
@@ -75,6 +78,40 @@ fn read_screen_state(cpu: &CPU, frame: &mut [u8; 32 * 3 * 32]) -> bool {
     update
 }
 
+fn format_rom_error(path: &str, err: RomError) -> String {
+    match err {
+        RomError::InvalidHeader => format!("failed to load ROM '{}': invalid iNES header", path),
+        RomError::UnsupportedMapper(mapper) => {
+            format!(
+                "failed to load ROM '{}': unsupported mapper {} (only mapper 0/NROM is supported)",
+                path, mapper
+            )
+        }
+        RomError::Truncated => format!("failed to load ROM '{}': ROM data is truncated", path),
+    }
+}
+
+fn try_load_rom_from_cli(cpu: &mut CPU) -> Result<bool, String> {
+    let rom_path = match env::args().nth(1) {
+        Some(path) => path,
+        None => return Ok(false),
+    };
+
+    let rom_bytes = fs::read(&rom_path)
+        .map_err(|err| format!("failed to read ROM '{}': {}", rom_path, err))?;
+    let rom = Rom::from_bytes(&rom_bytes).map_err(|err| format_rom_error(&rom_path, err))?;
+    if rom.mapper != 0 {
+        return Err(format!(
+            "failed to load ROM '{}': unsupported mapper {}",
+            rom_path, rom.mapper
+        ));
+    }
+
+    cpu.load_prg_rom(&rom.prg_rom)
+        .map_err(|err| format!("failed to map PRG ROM '{}': {:?}", rom_path, err))?;
+    Ok(true)
+}
+
 fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -118,7 +155,16 @@ fn main() {
     ];
 
     let mut cpu = CPU::new();
-    cpu.load(game_code);
+    let rom_loaded = match try_load_rom_from_cli(&mut cpu) {
+        Ok(loaded) => loaded,
+        Err(message) => {
+            eprintln!("{}", message);
+            process::exit(1);
+        }
+    };
+    if !rom_loaded {
+        cpu.load(game_code);
+    }
     cpu.reset();
 
     let mut screen_state = [0 as u8; 32 * 3 * 32];

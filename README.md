@@ -46,6 +46,15 @@ After launch:
 - Use `W / A / S / D` for direction input
 - Press `Esc` or close the window to quit
 
+### Run with iNES ROM (Mapper 0 / NROM only)
+
+```bash
+cargo run -- path/to/game.nes
+```
+
+When a ROM path is provided, the runtime parses the iNES header, accepts only mapper 0, and maps PRG ROM at `0x8000..0xFFFF` (with 16KB mirroring when needed).  
+When no ROM path is provided, it falls back to the built-in demo bytecode.
+
 ### Run with instruction trace (optional)
 
 ```bash
@@ -90,7 +99,7 @@ This project tracks progress in 3 short milestones:
   - ✅ Add instruction trace logging (toggleable)
   - Add cycle accounting (+ branch/page-cross penalties)
 - **Sprint 3 (NES entry point)**
-  - Add ROM loader (iNES header + PRG mapping)
+  - ✅ Add ROM loader (iNES header + PRG mapping, mapper 0 only)
   - Add Mapper 0 (NROM)
   - Add minimal PPU register/VRAM scaffold
 
