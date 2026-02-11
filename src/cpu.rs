@@ -27,6 +27,7 @@ pub struct CPU {
     pub status: CpuFlags,
     pub program_counter: u16,
     pub stack_pointer: u8,
+    cycles: u64,
     memory: [u8; 0x10000],
 }
 
@@ -116,8 +117,59 @@ impl CPU {
             status: CpuFlags::from_bits_truncate(0b100100),
             program_counter: 0,
             stack_pointer: STACK_RESET,
+            cycles: 0,
             memory: [0; 0x10000],
         }
+    }
+
+    fn did_page_cross(&self, mode: &AddressingMode) -> bool {
+        match mode {
+            AddressingMode::Absolute_X => {
+                let base = self.mem_read_u16(self.program_counter);
+                (base & 0xFF00) != (base.wrapping_add(self.register_x as u16) & 0xFF00)
+            }
+            AddressingMode::Absolute_Y => {
+                let base = self.mem_read_u16(self.program_counter);
+                (base & 0xFF00) != (base.wrapping_add(self.register_y as u16) & 0xFF00)
+            }
+            AddressingMode::Indirect_Y => {
+                let base = self.mem_read(self.program_counter);
+                let lo = self.mem_read(base as u16);
+                let hi = self.mem_read((base as u8).wrapping_add(1) as u16);
+                let deref_base = (hi as u16) << 8 | (lo as u16);
+
+                (deref_base & 0xFF00) != (deref_base.wrapping_add(self.register_y as u16) & 0xFF00)
+            }
+            _ => false,
+        }
+    }
+
+    fn opcode_has_page_cross_penalty(code: u8) -> bool {
+        matches!(
+            code,
+            0xbd | 0xb9
+                | 0xb1
+                | 0x7d
+                | 0x79
+                | 0x71
+                | 0xfd
+                | 0xf9
+                | 0xf1
+                | 0x3d
+                | 0x39
+                | 0x31
+                | 0x5d
+                | 0x59
+                | 0x51
+                | 0x1d
+                | 0x19
+                | 0x11
+                | 0xdd
+                | 0xd9
+                | 0xd1
+                | 0xbe
+                | 0xbc
+        )
     }
 
     fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
@@ -393,16 +445,18 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_y);
     }
 
-    fn branch(&mut self, condition: bool) {
-        if condition {
-            let jump: i8 = self.mem_read(self.program_counter) as i8;
-            let jump_addr = self
-                .program_counter
-                .wrapping_add(1)
-                .wrapping_add(jump as u16);
-
-            self.program_counter = jump_addr;
+    fn branch(&mut self, condition: bool) -> (bool, bool) {
+        if !condition {
+            return (false, false);
         }
+
+        let jump: i8 = self.mem_read(self.program_counter) as i8;
+        let base = self.program_counter.wrapping_add(1);
+        let jump_addr = base.wrapping_add(jump as u16);
+
+        let page_crossed = (base & 0xFF00) != (jump_addr & 0xFF00);
+        self.program_counter = jump_addr;
+        (true, page_crossed)
     }
 
     fn set_carry_flag(&mut self) {
@@ -547,8 +601,13 @@ impl CPU {
         self.register_y = 0;
         self.stack_pointer = STACK_RESET;
         self.status = CpuFlags::from_bits_truncate(0b100100);
+        self.cycles = 0;
 
         self.program_counter = self.mem_read_u16(RESET_VECTOR);
+    }
+
+    pub fn total_cycles(&self) -> u64 {
+        self.cycles
     }
 
     fn push_interrupt_state(&mut self, break_flag: bool) {
@@ -662,6 +721,12 @@ impl CPU {
                 }
             };
 
+            let mut extra_cycles: u64 = 0;
+
+            if CPU::opcode_has_page_cross_penalty(code) && self.did_page_cross(&opcode.mode) {
+                extra_cycles += 1;
+            }
+
             match code {
                 0xa9 | 0xa5 | 0xb5 | 0xad | 0xbd | 0xb9 | 0xa1 | 0xb1 => {
                     self.lda(&opcode.mode);
@@ -681,7 +746,10 @@ impl CPU {
 
                 0xAA => self.tax(),
                 0xE8 => self.inx(),
-                0x00 => return Ok(()),
+                0x00 => {
+                    self.cycles += opcode.cycles as u64;
+                    return Ok(());
+                }
                 0x48 => self.stack_push(self.register_a),
                 0x68 => {
                     self.pla();
@@ -779,28 +847,80 @@ impl CPU {
                     self.program_counter = self.stack_pop_u16();
                 }
                 0xd0 => {
-                    self.branch(!self.status.contains(CpuFlags::ZERO));
+                    let (taken, page_crossed) = self.branch(!self.status.contains(CpuFlags::ZERO));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x70 => {
-                    self.branch(self.status.contains(CpuFlags::OVERFLOW));
+                    let (taken, page_crossed) =
+                        self.branch(self.status.contains(CpuFlags::OVERFLOW));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x50 => {
-                    self.branch(!self.status.contains(CpuFlags::OVERFLOW));
+                    let (taken, page_crossed) =
+                        self.branch(!self.status.contains(CpuFlags::OVERFLOW));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x10 => {
-                    self.branch(!self.status.contains(CpuFlags::NEGATIV));
+                    let (taken, page_crossed) =
+                        self.branch(!self.status.contains(CpuFlags::NEGATIV));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x30 => {
-                    self.branch(self.status.contains(CpuFlags::NEGATIV));
+                    let (taken, page_crossed) =
+                        self.branch(self.status.contains(CpuFlags::NEGATIV));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0xf0 => {
-                    self.branch(self.status.contains(CpuFlags::ZERO));
+                    let (taken, page_crossed) = self.branch(self.status.contains(CpuFlags::ZERO));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0xb0 => {
-                    self.branch(self.status.contains(CpuFlags::CARRY));
+                    let (taken, page_crossed) = self.branch(self.status.contains(CpuFlags::CARRY));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x90 => {
-                    self.branch(!self.status.contains(CpuFlags::CARRY));
+                    let (taken, page_crossed) = self.branch(!self.status.contains(CpuFlags::CARRY));
+                    if taken {
+                        extra_cycles += 1;
+                    }
+                    if page_crossed {
+                        extra_cycles += 1;
+                    }
                 }
                 0x24 | 0x2c => {
                     self.bit(&opcode.mode);
@@ -849,6 +969,8 @@ impl CPU {
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
+
+            self.cycles += opcode.cycles as u64 + extra_cycles;
 
             callback(self);
         }
@@ -1219,6 +1341,42 @@ mod test {
             cpu.mem_read(0x01FB),
             (CpuFlags::BREAK | CpuFlags::BREAK2).bits()
         );
+    }
+
+    #[test]
+    fn test_cycle_counting_for_simple_program() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0xa9, 0x01, 0xaa, 0x00]);
+        cpu.reset();
+
+        cpu.try_run_with_callback(&mut |_| {}).unwrap();
+
+        assert_eq!(cpu.total_cycles(), 11);
+    }
+
+    #[test]
+    fn test_branch_taken_adds_cycle() {
+        let mut cpu = CPU::new();
+        cpu.load(vec![0xa9, 0x00, 0xf0, 0x02, 0xea, 0x00]);
+        cpu.reset();
+
+        cpu.try_run_with_callback(&mut |_| {}).unwrap();
+
+        assert_eq!(cpu.total_cycles(), 12);
+    }
+
+    #[test]
+    fn test_absolute_y_page_cross_adds_cycle() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x0100, 0x07);
+        cpu.load(vec![0xb9, 0xff, 0x00, 0x00]);
+        cpu.reset();
+        cpu.register_y = 1;
+
+        cpu.try_run_with_callback(&mut |_| {}).unwrap();
+
+        assert_eq!(cpu.register_a, 0x07);
+        assert_eq!(cpu.total_cycles(), 12);
     }
     #[test]
     fn test_try_run_reports_unsupported_opcode() {
