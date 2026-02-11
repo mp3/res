@@ -5,9 +5,10 @@
 
 ## 1. エミュレータ基盤
 
-- [ ] **ROM ローダー実装（iNES/NES ヘッダ読込）**
+- [x] **ROM ローダー実装（iNES/NES ヘッダ読込）**
   - 現在は `main.rs` にゲームバイトコードをハードコードしているため、外部 ROM を実行できない。
   - まずはファイル読込 + PRG ROM を CPU アドレス空間へマップする最小実装を追加する。
+  - ✅ 実施済み: `src/rom.rs` に iNES ローダー（mapper 0 限定、trainer スキップ対応）を追加し、`main.rs` で CLI 引数の `.nes` を読込。`CPU::load_prg_rom` で PRG 16KB/32KB の `0x8000..0xFFFF` マップを実装。
 
 - [x] **CPU コアをライブラリ化し、SDL フロントエンドと分離**
   - 実行環境（CLI/SDL）と CPU コアが密結合になっているため、再利用とテストがしづらい。
@@ -84,6 +85,6 @@
 - [x] typo 修正と命名統一
 
 ### Sprint 3（NES 入口）
-- [ ] ROM ローダー
+- [x] ROM ローダー
 - [ ] Mapper 0（NROM）
 - [ ] PPU 最小実装

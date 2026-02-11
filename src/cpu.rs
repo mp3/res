@@ -36,6 +36,11 @@ pub enum CpuError {
     UnsupportedOpcode { opcode: u8, pc: u16 },
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum CpuLoadError {
+    InvalidPrgSize(usize),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TraceState {
     pub pc: u16,
@@ -593,6 +598,21 @@ impl CPU {
     pub fn load(&mut self, program: Vec<u8>) {
         self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
         self.mem_write_u16(RESET_VECTOR, 0x0600);
+    }
+
+    pub fn load_prg_rom(&mut self, prg_rom: &[u8]) -> Result<(), CpuLoadError> {
+        match prg_rom.len() {
+            0x4000 => {
+                self.memory[0x8000..0xC000].copy_from_slice(prg_rom);
+                self.memory[0xC000..0x10000].copy_from_slice(prg_rom);
+                Ok(())
+            }
+            0x8000 => {
+                self.memory[0x8000..0x10000].copy_from_slice(prg_rom);
+                Ok(())
+            }
+            size => Err(CpuLoadError::InvalidPrgSize(size)),
+        }
     }
 
     pub fn reset(&mut self) {
@@ -1392,5 +1412,52 @@ mod test {
                 pc: 0x0600,
             }
         );
+    }
+
+    #[test]
+    fn test_load_prg_rom_16kb_mirrors_to_upper_bank() {
+        let mut cpu = CPU::new();
+        let mut prg_rom = vec![0u8; 0x4000];
+        prg_rom[0] = 0x11;
+        prg_rom[0x3FFF] = 0x22;
+        cpu.load_prg_rom(&prg_rom).unwrap();
+
+        assert_eq!(cpu.mem_read(0x8000), 0x11);
+        assert_eq!(cpu.mem_read(0xBFFF), 0x22);
+        assert_eq!(cpu.mem_read(0xC000), 0x11);
+        assert_eq!(cpu.mem_read(0xFFFF), 0x22);
+    }
+
+    #[test]
+    fn test_load_prg_rom_32kb_maps_entire_upper_space() {
+        let mut cpu = CPU::new();
+        let mut prg_rom = vec![0u8; 0x8000];
+        prg_rom[0] = 0x33;
+        prg_rom[0x7FFF] = 0x44;
+        cpu.load_prg_rom(&prg_rom).unwrap();
+
+        assert_eq!(cpu.mem_read(0x8000), 0x33);
+        assert_eq!(cpu.mem_read(0xFFFF), 0x44);
+    }
+
+    #[test]
+    fn test_load_prg_rom_rejects_invalid_size() {
+        let mut cpu = CPU::new();
+        let err = cpu.load_prg_rom(&vec![0u8; 0x2000]).unwrap_err();
+        assert_eq!(err, CpuLoadError::InvalidPrgSize(0x2000));
+    }
+
+    #[test]
+    fn test_reset_vector_after_prg_load() {
+        let mut cpu = CPU::new();
+        let mut prg_rom = vec![0u8; 0x4000];
+        // For 16KB mirrored PRG, CPU vectors at 0xFFFC map to PRG offset 0x3FFC.
+        prg_rom[0x3FFC] = 0x34;
+        prg_rom[0x3FFD] = 0x12;
+        cpu.load_prg_rom(&prg_rom).unwrap();
+
+        cpu.reset();
+
+        assert_eq!(cpu.program_counter, 0x1234);
     }
 }
