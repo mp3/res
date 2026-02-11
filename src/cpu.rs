@@ -1,8 +1,10 @@
+use crate::mapper::{Mapper, MapperError, NromMapper};
 use crate::opcodes;
 use crate::ppu::Ppu;
-use crate::rom::Mirroring;
+use crate::rom::{Mirroring, Rom};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 bitflags! {
   pub struct CpuFlags: u8 {
@@ -33,6 +35,7 @@ pub struct CPU {
     cycles: u64,
     memory: [u8; 0x10000],
     ppu: RefCell<Ppu>,
+    mapper: Option<Rc<RefCell<dyn Mapper>>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -43,6 +46,7 @@ pub enum CpuError {
 #[derive(Debug, PartialEq, Eq)]
 pub enum CpuLoadError {
     InvalidPrgSize(usize),
+    UnsupportedMapper(u8),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -114,6 +118,14 @@ impl Mem for CPU {
                 let reg = 0x2000 + ((addr - 0x2000) % 8);
                 self.ppu.borrow_mut().read_register(reg)
             }
+            0x8000..=0xFFFF => {
+                if let Some(mapper) = &self.mapper {
+                    if let Some(data) = mapper.borrow().cpu_read(addr) {
+                        return data;
+                    }
+                }
+                self.memory[addr as usize]
+            }
             _ => self.memory[addr as usize],
         }
     }
@@ -123,6 +135,14 @@ impl Mem for CPU {
             0x2000..=0x3FFF => {
                 let reg = 0x2000 + ((addr - 0x2000) % 8);
                 self.ppu.borrow_mut().write_register(reg, data);
+            }
+            0x8000..=0xFFFF => {
+                if let Some(mapper) = &self.mapper {
+                    if mapper.borrow_mut().cpu_write(addr, data) {
+                        return;
+                    }
+                }
+                self.memory[addr as usize] = data;
             }
             _ => self.memory[addr as usize] = data,
         }
@@ -141,11 +161,29 @@ impl CPU {
             cycles: 0,
             memory: [0; 0x10000],
             ppu: RefCell::new(Ppu::new(Mirroring::Horizontal)),
+            mapper: None,
         }
     }
 
     pub fn set_ppu_mirroring(&mut self, mirroring: Mirroring) {
         self.ppu.borrow_mut().set_mirroring(mirroring);
+    }
+
+    pub fn load_cartridge(&mut self, rom: Rom) -> Result<(), CpuLoadError> {
+        if rom.mapper != 0 {
+            return Err(CpuLoadError::UnsupportedMapper(rom.mapper));
+        }
+
+        let mapper = NromMapper::new(rom.prg_rom, rom.chr_rom, rom.has_chr_ram)
+            .map_err(|err| match err {
+                MapperError::InvalidPrgSize(size) => CpuLoadError::InvalidPrgSize(size),
+            })?;
+        let shared_mapper: Rc<RefCell<dyn Mapper>> = Rc::new(RefCell::new(mapper));
+
+        self.set_ppu_mirroring(rom.mirroring);
+        self.ppu.borrow_mut().set_mapper(Some(shared_mapper.clone()));
+        self.mapper = Some(shared_mapper);
+        Ok(())
     }
 
     fn did_page_cross(&self, mode: &AddressingMode) -> bool {
@@ -622,6 +660,9 @@ impl CPU {
     }
 
     pub fn load_prg_rom(&mut self, prg_rom: &[u8]) -> Result<(), CpuLoadError> {
+        self.mapper = None;
+        self.ppu.borrow_mut().set_mapper(None);
+
         match prg_rom.len() {
             0x4000 => {
                 self.memory[0x8000..0xC000].copy_from_slice(prg_rom);
@@ -1515,5 +1556,46 @@ mod test {
         cpu.reset();
 
         assert_eq!(cpu.program_counter, 0x1234);
+    }
+
+    #[test]
+    fn test_load_cartridge_maps_nrom_prg_and_reset_vector() {
+        let mut cpu = CPU::new();
+        let mut prg_rom = vec![0u8; 0x4000];
+        prg_rom[0] = 0x11;
+        prg_rom[0x3FFF] = 0x22;
+        prg_rom[0x3FFC] = 0x78;
+        prg_rom[0x3FFD] = 0x56;
+
+        let rom = Rom {
+            prg_rom,
+            chr_rom: vec![0; 0x2000],
+            mapper: 0,
+            mirroring: Mirroring::Horizontal,
+            has_chr_ram: false,
+        };
+
+        cpu.load_cartridge(rom).unwrap();
+        assert_eq!(cpu.mem_read(0x8000), 0x11);
+        assert_eq!(cpu.mem_read(0xC000), 0x11);
+        assert_eq!(cpu.mem_read(0xFFFF), 0x22);
+
+        cpu.reset();
+        assert_eq!(cpu.program_counter, 0x5678);
+    }
+
+    #[test]
+    fn test_load_cartridge_rejects_unsupported_mapper() {
+        let mut cpu = CPU::new();
+        let rom = Rom {
+            prg_rom: vec![0; 0x4000],
+            chr_rom: vec![0; 0x2000],
+            mapper: 1,
+            mirroring: Mirroring::Horizontal,
+            has_chr_ram: false,
+        };
+
+        let err = cpu.load_cartridge(rom).unwrap_err();
+        assert_eq!(err, CpuLoadError::UnsupportedMapper(1));
     }
 }

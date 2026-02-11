@@ -53,6 +53,7 @@ cargo run -- path/to/game.nes
 ```
 
 When a ROM path is provided, the runtime parses the iNES header, accepts only mapper 0, and maps PRG ROM at `0x8000..0xFFFF` (with 16KB mirroring when needed).  
+Mapper 0 now wires both PRG and CHR: for `CHR ROM` cartridges, PPU pattern table reads (`0x0000..0x1FFF`) come from ROM and writes are ignored; when the ROM has `0` CHR banks, the emulator allocates `8KB CHR RAM` and allows reads/writes there.
 When no ROM path is provided, it falls back to the built-in demo bytecode.
 
 ### Run with instruction trace (optional)
@@ -100,7 +101,7 @@ This project tracks progress in 3 short milestones:
   - Add cycle accounting (+ branch/page-cross penalties)
 - **Sprint 3 (NES entry point)**
   - ✅ Add ROM loader (iNES header + PRG mapping, mapper 0 only)
-  - Add Mapper 0 (NROM)
+  - ✅ Add Mapper 0 (NROM)
   - Add minimal PPU register/VRAM scaffold
 
 ### Definition of Done (per milestone)
