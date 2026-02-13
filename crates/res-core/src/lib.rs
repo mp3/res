@@ -5,6 +5,7 @@ extern crate lazy_static;
 extern crate bitflags;
 
 pub mod cpu;
+pub mod apu;
 pub mod mapper;
 pub mod opcodes;
 pub mod ppu;

@@ -1,4 +1,5 @@
 use crate::mapper::{Mapper, MapperError, NromMapper};
+use crate::apu::Apu;
 use crate::opcodes;
 use crate::ppu::Ppu;
 use crate::rom::{Mirroring, Rom};
@@ -34,6 +35,7 @@ pub struct CPU {
     pub stack_pointer: u8,
     cycles: u64,
     memory: [u8; 0x10000],
+    apu: Apu,
     ppu: RefCell<Ppu>,
     mapper: Option<Rc<RefCell<dyn Mapper>>>,
 }
@@ -114,6 +116,7 @@ pub trait Mem {
 impl Mem for CPU {
     fn mem_read(&self, addr: u16) -> u8 {
         match addr {
+            0x4000..=0x4017 => self.apu.read_register(addr),
             0x2000..=0x3FFF => {
                 let reg = 0x2000 + ((addr - 0x2000) % 8);
                 self.ppu.borrow_mut().read_register(reg)
@@ -132,6 +135,7 @@ impl Mem for CPU {
 
     fn mem_write(&mut self, addr: u16, data: u8) {
         match addr {
+            0x4000..=0x4017 => self.apu.write_register(addr, data),
             0x2000..=0x3FFF => {
                 let reg = 0x2000 + ((addr - 0x2000) % 8);
                 self.ppu.borrow_mut().write_register(reg, data);
@@ -160,6 +164,7 @@ impl CPU {
             stack_pointer: STACK_RESET,
             cycles: 0,
             memory: [0; 0x10000],
+            apu: Apu::new(),
             ppu: RefCell::new(Ppu::new(Mirroring::Horizontal)),
             mapper: None,
         }
@@ -1191,6 +1196,31 @@ mod test {
         cpu.mem_write_u16(0x10, 0x6655);
         assert_eq!(cpu.memory[0x10], 0x55);
         assert_eq!(cpu.memory[0x11], 0x66);
+    }
+
+    #[test]
+    fn test_apu_register_write_is_accepted() {
+        let mut cpu = CPU::new();
+
+        cpu.mem_write(0x4000, 0xff);
+        cpu.mem_write(0x4017, 0x7f);
+
+        assert_eq!(cpu.mem_read(0x4000), 0x00);
+        assert_eq!(cpu.mem_read(0x4017), 0x00);
+    }
+
+    #[test]
+    fn test_ppu_and_apu_ranges_are_independent() {
+        let mut cpu = CPU::new();
+
+        cpu.mem_write(0x4000, 0xaa);
+
+        assert_eq!(cpu.mem_read(0x4000), 0x00);
+        assert_ne!(cpu.memory[0x4000], 0xaa);
+
+        cpu.mem_write(0x2000, 0x55);
+        assert_eq!(cpu.mem_read(0x2000), 0x00);
+        assert_eq!(cpu.memory[0x2000], 0x00);
     }
 
     #[test]
