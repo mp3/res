@@ -1203,9 +1203,11 @@ mod test {
         let mut cpu = CPU::new();
 
         cpu.mem_write(0x4000, 0xff);
+        cpu.mem_write(0x4015, 0x1f);
         cpu.mem_write(0x4017, 0x7f);
 
         assert_eq!(cpu.mem_read(0x4000), 0x00);
+        assert_eq!(cpu.mem_read(0x4015), 0x1f);
         assert_eq!(cpu.mem_read(0x4017), 0x00);
     }
 

@@ -20,9 +20,17 @@ impl Apu {
     }
 
     pub fn read_register(&self, addr: u16) -> u8 {
-        if Self::is_apu_register(addr) {
-            let _ = self.registers[(addr - 0x4000) as usize];
+        if !Self::is_apu_register(addr) {
+            return 0;
         }
+
+        // APU is currently a stub. Most registers are treated as write-only and
+        // return `0` on reads, but `$4015` (status) is surfaced so callers can
+        // verify register wiring while full audio emulation is pending.
+        if addr == 0x4015 {
+            return self.registers[(addr - 0x4000) as usize];
+        }
+
         0
     }
 }
@@ -40,5 +48,14 @@ mod test {
 
         assert_eq!(apu.read_register(0x4000), 0x00);
         assert_eq!(apu.read_register(0x4017), 0x00);
+    }
+
+    #[test]
+    fn test_apu_status_register_readback_is_available_in_stub() {
+        let mut apu = Apu::new();
+
+        apu.write_register(0x4015, 0x1F);
+
+        assert_eq!(apu.read_register(0x4015), 0x1F);
     }
 }
