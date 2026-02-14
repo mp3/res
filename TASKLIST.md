@@ -49,9 +49,10 @@
   - まずは CPU メモリマップ上の PPU レジスタ挙動の最小実装を行う。
   - ✅ 実施済み: `crates/res-core/src/ppu.rs` を追加し、`0x2000..0x3FFF` レジスタミラー、`PPUCTRL/PPUMASK/PPUSTATUS/PPUADDR/PPUDATA` の最小挙動、ネームテーブル水平/垂直ミラー、`0x3000..0x3EFF` とパレットミラー（`0x3F10` など）を実装。`CPU` 側で PPU バスへ分岐し、ROM の mirroring 設定を `crates/res-sdl/src/main.rs` から反映。
 
-- [ ] **APU/音声のスタブ実装**
+- [x] **APU/音声のスタブ実装**
   - 音声系 I/O が未実装。
   - まずはレジスタ書込受付のみのスタブを追加し、将来的な音源実装に備える。
+  - ✅ 実施済み: `crates/res-core/src/apu.rs` に APU レジスタスタブ（`0x4000..=0x4017`）を追加。書込受付を実装し、読み出しは基本 `0` を返す方針としつつ、配線確認用に `0x4015`（status）のみ read-back を許可。`CPU` バス経由テストを追加。
 
 - [x] **Mapper 0（NROM）対応**
   - カートリッジごとのバンク切替機構が未対応。
